@@ -19,7 +19,7 @@ import { useSessionStore } from '../../store/sessionStore';
 import { listPersons } from '../../db/repositories/personRepository';
 import { PersonSummary, FamilyBranch } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
-import { Chip, Icon, ScreenHeader, useToast } from '../../components';
+import { Chip, Icon, ScreenHeader, useToast, Avatar } from '../../components';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ScreenRouteProp = RouteProp<RootStackParamList, 'TreeExport'>;
@@ -430,6 +430,18 @@ export function TreeExportScreen() {
                               </View>
                             ) : null}
 
+                            {/* Avatar Portrait */}
+                            <View style={styles.avatarWrap}>
+                              <Avatar
+                                uri={person.avatarUri}
+                                name={person.name}
+                                gender={person.gender}
+                                branch={person.branch}
+                                size={44}
+                                isDeceased={person.isDeceased}
+                              />
+                            </View>
+
                             {/* Name */}
                             <Text
                               style={[styles.memberName, { color: themeColors.text }]}
@@ -642,12 +654,18 @@ const styles = StyleSheet.create({
     maxWidth: 780,
   },
   memberCard: {
-    width: 140,
+    width: 148,
     padding: 10,
     borderRadius: radius.md,
     borderWidth: 1,
     alignItems: 'center',
     position: 'relative',
+    minHeight: 180,
+  },
+  avatarWrap: {
+    marginTop: 8,
+    marginBottom: 6,
+    alignItems: 'center',
   },
   deceasedMark: {
     position: 'absolute',
@@ -657,6 +675,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 4,
+    zIndex: 2,
   },
   deceasedMarkText: {
     fontSize: 9,
@@ -667,7 +686,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: 2,
   },
   memberNickname: {
     fontSize: 11,

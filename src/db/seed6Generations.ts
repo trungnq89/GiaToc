@@ -4,6 +4,87 @@ import { createMemorialEvent } from './repositories/eventRepository';
 import { execute } from './database';
 
 /**
+ * Kho ảnh chân dung mẫu từ Internet phù hợp chặt chẽ theo độ tuổi và giới tính:
+ * - Đời 1: Bậc Cao Tổ (Khởi tổ, cụ cao niên phúc hậu, râu tóc bạc phơ)
+ * - Đời 2: Bậc Tằng Tổ (Cụ Cố ~75-85 tuổi)
+ * - Đời 3: Bậc Tiền Bối (Ông Bà ~60-75 tuổi)
+ * - Đời 4: Bậc Cha Chú Cô Bác (~45-60 tuổi, trung niên)
+ * - Đời 5: Thế hệ Tôi & Anh Chị Em (~20-38 tuổi, thanh niên trẻ)
+ * - Đời 6: Bậc Con Cháu Đời Mới (~0-8 tuổi, thiếu nhi & em bé)
+ */
+const SAMPLE_AVATARS = {
+  // ĐỜI 1: CAO TỔ (Sinh ~1880, Cụ già xưa)
+  caoToPhu: 'https://images.unsplash.com/photo-1508186225823-0963cf9ab0de?auto=format&fit=crop&w=256&q=80',
+  caoToMau: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80',
+
+  // ĐỜI 2: TẰNG TỔ (CỤ CỐ, Sinh 1902 - 1915, ~75-85 tuổi)
+  tangToHuynh: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=256&q=80',
+  cuBacDauMui: 'https://images.unsplash.com/photo-1581579438747-1dc8d17bbce4?auto=format&fit=crop&w=256&q=80',
+  tangToKhang: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
+  tangToLua: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=256&q=80',
+  tangToPhuc: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=256&q=80',
+  cuThimDauSen: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=256&q=80',
+  tangToThinh: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=256&q=80',
+  tangToLan: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=256&q=80',
+  cuDuongHao: 'https://images.unsplash.com/photo-1463453091185-61582044d556?auto=format&fit=crop&w=256&q=80',
+
+  // ĐỜI 3: TIỀN BỐI (ÔNG BÀ, Sinh 1930 - 1948, ~60-75 tuổi)
+  ongBacTrong: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=256&q=80',
+  baBacDauQuy: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80',
+  ongNoiChinh: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+  baNoiMai: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+  ongChuLiem: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=256&q=80',
+  baThimDauThuc: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
+  baCoTuyet: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=256&q=80',
+  ongDuongChung: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=256&q=80',
+  ongChuHung: 'https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=256&q=80',
+  baThimDauPhuong: 'https://images.unsplash.com/photo-1548142813-c348350df52b?auto=format&fit=crop&w=256&q=80',
+  baCoVan: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80',
+  ongDuongTuan: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=256&q=80',
+
+  // ĐỜI 4: CHA CHÚ CÔ BÁC (Sinh 1959 - 1978, ~45-60 tuổi, trung niên)
+  bacCaTuan: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
+  bacGaiHuong: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
+  boBinh: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+  meThu: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80',
+  chuBaDung: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=256&q=80',
+  thimOanh: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=256&q=80',
+  coTuHang: 'https://images.unsplash.com/photo-1548142813-c348350df52b?auto=format&fit=crop&w=256&q=80',
+  chuDuongLong: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=256&q=80',
+  chuUtNam: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=256&q=80',
+  thimUtLinh: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+
+  // ĐỜI 5: TÔI & ANH CHỊ EM (Sinh 1986 - 2006, ~18-38 tuổi, thanh niên trẻ)
+  anhPhong: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=256&q=80',
+  chiDauAnh: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80',
+  chiTrang: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=256&q=80',
+  anhReMinh: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=256&q=80',
+  anhVu: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=256&q=80',
+  chiMai: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80',
+  anhHung: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+  chiDauHa: 'https://images.unsplash.com/photo-1548142813-c348350df52b?auto=format&fit=crop&w=256&q=80',
+  voThao: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+  emTraiThanh: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=256&q=80',
+  emDauQuynh: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80',
+  emGaiLinh: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=256&q=80',
+  emReTuan: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=256&q=80',
+  emLong: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=256&q=80',
+  emDauLy: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80',
+  emHuyen: 'https://images.unsplash.com/photo-1548142813-c348350df52b?auto=format&fit=crop&w=256&q=80',
+  emNamConChu: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=256&q=80',
+  emMy: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80',
+  emHuy: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=256&q=80',
+
+  // ĐỜI 6: BẬC CON CHÁU (Sinh 2016 - 2024, ~0-8 tuổi, trẻ em & em bé)
+  conTraiKhoi: 'https://images.unsplash.com/photo-1595454223600-91fbdd77ae58?auto=format&fit=crop&w=256&q=80',
+  conGaiAn: 'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&w=256&q=80',
+  chauRuotKhangAn: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=256&q=80',
+  chauRuotTueLam: 'https://images.unsplash.com/photo-1543332164-6e82f355badc?auto=format&fit=crop&w=256&q=80',
+  chauBao: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=256&q=80',
+  chauDiep: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=256&q=80',
+};
+
+/**
  * Helper liên kết cha/mẹ và con cái:
  * Đảm bảo người con có cha mẹ là parentId, và người cha/mẹ có con là childId.
  */
@@ -33,6 +114,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Chắt đời thứ 5',
     generation: 4,
     birthYear: 1880,
+    avatarUri: SAMPLE_AVATARS.caoToPhu,
     isDeceased: true,
     deathDateLunar: '10/03 Âm lịch',
     address: 'Từ đường Họ Nguyễn, Làng Cổ Đô, Ba Vì, Hà Nội',
@@ -49,6 +131,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Chắt đời thứ 5',
     generation: 4,
     birthYear: 1883,
+    avatarUri: SAMPLE_AVATARS.caoToMau,
     isDeceased: true,
     deathDateLunar: '18/08 Âm lịch',
     address: 'Làng Cổ Đô, Ba Vì, Hà Nội',
@@ -82,6 +165,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Cụ Bác trưởng',
     generation: 3,
     birthYear: 1902,
+    avatarUri: SAMPLE_AVATARS.tangToHuynh,
     isDeceased: true,
     deathDateLunar: '14/04 Âm lịch',
     notes: 'Cụ Bác chi trên, gìn giữ gia quy nghiêm ngặt.',
@@ -95,6 +179,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Cụ Bác dâu',
     generation: 3,
     birthYear: 1904,
+    avatarUri: SAMPLE_AVATARS.cuBacDauMui,
     isDeceased: true,
     deathDateLunar: '19/08 Âm lịch',
     notes: 'Cụ Bác dâu hiền hậu, hay làm bánh khảo cúng gia tiên.',
@@ -114,6 +199,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Chắt nội',
     generation: 3,
     birthYear: 1905,
+    avatarUri: SAMPLE_AVATARS.tangToKhang,
     isDeceased: true,
     deathDateLunar: '02/09 Âm lịch',
     address: 'Cổ Đô, Ba Vì, Hà Nội',
@@ -129,6 +215,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Chắt nội',
     generation: 3,
     birthYear: 1908,
+    avatarUri: SAMPLE_AVATARS.tangToLua,
     isDeceased: true,
     deathDateLunar: '24/11 Âm lịch',
     address: 'Cổ Đô, Ba Vì, Hà Nội',
@@ -157,6 +244,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Cụ Chú',
     generation: 3,
     birthYear: 1909,
+    avatarUri: SAMPLE_AVATARS.tangToPhuc,
     isDeceased: true,
     deathDateLunar: '05/06 Âm lịch',
   });
@@ -169,6 +257,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Cụ Thím',
     generation: 3,
     birthYear: 1911,
+    avatarUri: SAMPLE_AVATARS.cuThimDauSen,
     isDeceased: true,
     deathDateLunar: '28/02 Âm lịch',
   });
@@ -186,6 +275,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Cụ Chú',
     generation: 3,
     birthYear: 1912,
+    avatarUri: SAMPLE_AVATARS.tangToThinh,
     isDeceased: true,
     deathDateLunar: '19/01 Âm lịch',
   });
@@ -202,6 +292,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Bà Cụ Cô',
     generation: 3,
     birthYear: 1915,
+    avatarUri: SAMPLE_AVATARS.tangToLan,
     isDeceased: true,
     deathDateLunar: '12/12 Âm lịch',
   });
@@ -214,6 +305,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Cụ Dượng',
     generation: 3,
     birthYear: 1913,
+    avatarUri: SAMPLE_AVATARS.cuDuongHao,
     isDeceased: true,
     deathDateLunar: '08/04 Âm lịch',
   });
@@ -242,6 +334,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Ông Bác trưởng',
     generation: 2,
     birthYear: 1930,
+    avatarUri: SAMPLE_AVATARS.ongBacTrong,
     isDeceased: true,
     deathDateLunar: '22/10 Âm lịch',
     address: 'Ba Vì, Hà Nội',
@@ -255,6 +348,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Bà Bác dâu',
     generation: 2,
     birthYear: 1932,
+    avatarUri: SAMPLE_AVATARS.baBacDauQuy,
     isDeceased: true,
     deathDateLunar: '16/05 Âm lịch',
     address: 'Ba Vì, Hà Nội',
@@ -274,6 +368,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Cháu đích tôn',
     generation: 2,
     birthYear: 1934,
+    avatarUri: SAMPLE_AVATARS.ongNoiChinh,
     isDeceased: true,
     deathDateLunar: '06/03 Âm lịch',
     address: 'Cổ Đô, Ba Vì, Hà Nội',
@@ -289,6 +384,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Cháu nội',
     generation: 2,
     birthYear: 1938,
+    avatarUri: SAMPLE_AVATARS.baNoiMai,
     isDeceased: false,
     phone: '0912111222',
     address: 'Cầu Giấy, Hà Nội',
@@ -317,6 +413,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Ông Chú',
     generation: 2,
     birthYear: 1937,
+    avatarUri: SAMPLE_AVATARS.ongChuLiem,
     isDeceased: true,
     deathDateLunar: '15/07 Âm lịch',
   });
@@ -329,6 +426,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Bà Thím',
     generation: 2,
     birthYear: 1940,
+    avatarUri: SAMPLE_AVATARS.baThimDauThuc,
     isDeceased: true,
     deathDateLunar: '03/11 Âm lịch',
   });
@@ -346,6 +444,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Bà Cô ruột',
     generation: 2,
     birthYear: 1941,
+    avatarUri: SAMPLE_AVATARS.baCoTuyet,
     isDeceased: false,
     phone: '0988222333',
     address: 'Việt Trì, Phú Thọ',
@@ -360,6 +459,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Ông Dượng',
     generation: 2,
     birthYear: 1939,
+    avatarUri: SAMPLE_AVATARS.ongDuongChung,
     isDeceased: true,
     deathDateLunar: '11/09 Âm lịch',
     address: 'Việt Trì, Phú Thọ',
@@ -378,6 +478,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Ông Chú',
     generation: 2,
     birthYear: 1945,
+    avatarUri: SAMPLE_AVATARS.ongChuHung,
     isDeceased: false,
     phone: '0977333444',
     address: 'Quận 1, TP. Hồ Chí Minh',
@@ -392,6 +493,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Bà Thím',
     generation: 2,
     birthYear: 1947,
+    avatarUri: SAMPLE_AVATARS.baThimDauPhuong,
     isDeceased: false,
     phone: '0977333555',
     address: 'Quận 1, TP. Hồ Chí Minh',
@@ -410,6 +512,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Bà Cô',
     generation: 2,
     birthYear: 1948,
+    avatarUri: SAMPLE_AVATARS.baCoVan,
     isDeceased: false,
     phone: '0966555777',
     address: 'Nha Trang, Khánh Hòa',
@@ -423,6 +526,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     inferredRelationToMe: 'Ông Dượng',
     generation: 2,
     birthYear: 1946,
+    avatarUri: SAMPLE_AVATARS.ongDuongTuan,
     isDeceased: false,
     phone: '0966555888',
     address: 'Nha Trang, Khánh Hòa',
@@ -452,6 +556,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Cháu Trung',
     generation: 1,
     birthYear: 1959,
+    avatarUri: SAMPLE_AVATARS.bacCaTuan,
     isDeceased: false,
     phone: '0988667788',
     address: 'Cổ Đô, Ba Vì, Hà Nội',
@@ -467,6 +572,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Cháu Trung',
     generation: 1,
     birthYear: 1961,
+    avatarUri: SAMPLE_AVATARS.bacGaiHuong,
     isDeceased: false,
     address: 'Cổ Đô, Ba Vì, Hà Nội',
   });
@@ -485,6 +591,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Con trai',
     generation: 1,
     birthYear: 1963,
+    avatarUri: SAMPLE_AVATARS.boBinh,
     isDeceased: false,
     phone: '0913556677',
     address: 'Cầu Giấy, Hà Nội',
@@ -500,6 +607,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Con trai Trung',
     generation: 1,
     birthYear: 1966,
+    avatarUri: SAMPLE_AVATARS.meThu,
     isDeceased: false,
     phone: '0904112233',
     address: 'Cầu Giấy, Hà Nội',
@@ -520,6 +628,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Cháu Trung',
     generation: 1,
     birthYear: 1968,
+    avatarUri: SAMPLE_AVATARS.chuBaDung,
     isDeceased: false,
     phone: '0979888999',
     address: 'Thanh Xuân, Hà Nội',
@@ -535,6 +644,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Cháu Trung',
     generation: 1,
     birthYear: 1970,
+    avatarUri: SAMPLE_AVATARS.thimOanh,
     isDeceased: false,
     address: 'Thanh Xuân, Hà Nội',
   });
@@ -553,6 +663,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Cháu Trung',
     generation: 1,
     birthYear: 1972,
+    avatarUri: SAMPLE_AVATARS.coTuHang,
     isDeceased: false,
     phone: '0983123456',
     address: 'Lê Chân, Hải Phòng',
@@ -568,6 +679,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Cháu Trung',
     generation: 1,
     birthYear: 1971,
+    avatarUri: SAMPLE_AVATARS.chuDuongLong,
     isDeceased: false,
     phone: '0983123789',
     address: 'Lê Chân, Hải Phòng',
@@ -587,6 +699,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Cháu Trung',
     generation: 1,
     birthYear: 1976,
+    avatarUri: SAMPLE_AVATARS.chuUtNam,
     isDeceased: false,
     phone: '0912889900',
     address: 'Hải Châu, Đà Nẵng',
@@ -602,6 +715,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Cháu Trung',
     generation: 1,
     birthYear: 1978,
+    avatarUri: SAMPLE_AVATARS.thimUtLinh,
     isDeceased: false,
     address: 'Hải Châu, Đà Nẵng',
   });
@@ -635,6 +749,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Em Trung',
     generation: 0,
     birthYear: 1986,
+    avatarUri: SAMPLE_AVATARS.anhPhong,
     isDeceased: false,
     phone: '0982555666',
     address: 'Tây Hồ, Hà Nội',
@@ -650,6 +765,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Chú Trung',
     generation: 0,
     birthYear: 1988,
+    avatarUri: SAMPLE_AVATARS.chiDauAnh,
     isDeceased: false,
   });
   await linkParentChild(bacCaTuan.id, anhPhong.id);
@@ -666,6 +782,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Em Trung',
     generation: 0,
     birthYear: 1989,
+    avatarUri: SAMPLE_AVATARS.chiTrang,
     isDeceased: false,
     phone: '0976111222',
     address: 'Cầu Giấy, Hà Nội',
@@ -681,6 +798,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Cậu Trung',
     generation: 0,
     birthYear: 1987,
+    avatarUri: SAMPLE_AVATARS.anhReMinh,
     isDeceased: false,
     phone: '0976111333',
   });
@@ -698,6 +816,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Em Trung',
     generation: 0,
     birthYear: 1992,
+    avatarUri: SAMPLE_AVATARS.anhVu,
     isDeceased: false,
     phone: '0985222111',
     address: 'Ba Vì, Hà Nội',
@@ -715,6 +834,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Em Trung',
     generation: 0,
     birthYear: 1994,
+    avatarUri: SAMPLE_AVATARS.chiMai,
     isDeceased: false,
     phone: '0917333555',
   });
@@ -733,6 +853,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Em Trung',
     generation: 0,
     birthYear: 1991,
+    avatarUri: SAMPLE_AVATARS.anhHung,
     isDeceased: false,
     phone: '0981999888',
     address: 'Hà Đông, Hà Nội',
@@ -748,6 +869,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Chú Trung',
     generation: 0,
     birthYear: 1993,
+    avatarUri: SAMPLE_AVATARS.chiDauHa,
     isDeceased: false,
     phone: '0981999777',
     address: 'Hà Đông, Hà Nội',
@@ -768,6 +890,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Chồng',
     generation: 0,
     birthYear: 1996,
+    avatarUri: SAMPLE_AVATARS.voThao,
     isDeceased: false,
     phone: '0908889911',
     address: 'Cầu Giấy, Hà Nội',
@@ -785,6 +908,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Anh Trung',
     generation: 0,
     birthYear: 1998,
+    avatarUri: SAMPLE_AVATARS.emTraiThanh,
     isDeceased: false,
     phone: '0966444555',
     address: 'Cầu Giấy, Hà Nội',
@@ -800,6 +924,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Bác Trung',
     generation: 0,
     birthYear: 2000,
+    avatarUri: SAMPLE_AVATARS.emDauQuynh,
     isDeceased: false,
     phone: '0966444666',
     notes: 'Thiết kế đồ họa, hiền lành, yêu trẻ con.',
@@ -819,6 +944,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Anh Trung',
     generation: 0,
     birthYear: 2002,
+    avatarUri: SAMPLE_AVATARS.emGaiLinh,
     isDeceased: false,
     phone: '0987333222',
     address: 'Cầu Giấy, Hà Nội',
@@ -834,6 +960,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Anh Trung',
     generation: 0,
     birthYear: 2000,
+    avatarUri: SAMPLE_AVATARS.emReTuan,
     isDeceased: false,
     phone: '0987333111',
     notes: 'Chuyên viên tài chính ngân hàng, năng động.',
@@ -853,6 +980,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Anh Trung',
     generation: 0,
     birthYear: 1997,
+    avatarUri: SAMPLE_AVATARS.emLong,
     isDeceased: false,
     phone: '0943555777',
     address: 'Thanh Xuân, Hà Nội',
@@ -867,6 +995,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Anh Trung',
     generation: 0,
     birthYear: 1999,
+    avatarUri: SAMPLE_AVATARS.emDauLy,
     isDeceased: false,
     phone: '0943555888',
   });
@@ -884,6 +1013,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Anh Trung',
     generation: 0,
     birthYear: 2000,
+    avatarUri: SAMPLE_AVATARS.emHuyen,
     isDeceased: false,
     phone: '0977888123',
     address: 'Thanh Xuân, Hà Nội',
@@ -901,6 +1031,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Anh Trung',
     generation: 0,
     birthYear: 2003,
+    avatarUri: SAMPLE_AVATARS.emNamConChu,
     isDeceased: false,
   });
   await linkParentChild(chuBaDung.id, emNamConChu.id);
@@ -916,6 +1047,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Anh Trung',
     generation: 0,
     birthYear: 2006,
+    avatarUri: SAMPLE_AVATARS.emMy,
     isDeceased: false,
   });
   await linkParentChild(chuBaDung.id, emMy.id);
@@ -932,6 +1064,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Anh Trung',
     generation: 0,
     birthYear: 1999,
+    avatarUri: SAMPLE_AVATARS.emHuy,
     isDeceased: false,
     phone: '0936777888',
     address: 'Hải Phòng',
@@ -957,6 +1090,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Bố Trung',
     generation: -1,
     birthYear: 2022,
+    avatarUri: SAMPLE_AVATARS.conTraiKhoi,
     isDeceased: false,
     notes: 'Thích ô tô đồ chơi, tính cách lém lỉnh, hay cười.',
   });
@@ -973,6 +1107,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Bố Trung',
     generation: -1,
     birthYear: 2024,
+    avatarUri: SAMPLE_AVATARS.conGaiAn,
     isDeceased: false,
     notes: 'Công chúa nhỏ của gia đình, vừa biết bi bô gọi bố mẹ.',
   });
@@ -989,6 +1124,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Chú Trung',
     generation: -1,
     birthYear: 2021,
+    avatarUri: SAMPLE_AVATARS.chauRuotKhangAn,
     isDeceased: false,
     notes: 'Cháu đích tôn của Bố Mẹ, rất thông minh, mê đàn piano.',
   });
@@ -1005,6 +1141,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Chú Trung',
     generation: -1,
     birthYear: 2023,
+    avatarUri: SAMPLE_AVATARS.chauRuotTueLam,
     isDeceased: false,
   });
   await linkParentChild(anhHung.id, chauRuotTueLam.id);
@@ -1021,6 +1158,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Chú Trung',
     generation: -1,
     birthYear: 2016,
+    avatarUri: SAMPLE_AVATARS.chauBao,
     isDeceased: false,
     notes: 'Học sinh giỏi lớp 4, thích môn cờ vua.',
   });
@@ -1037,6 +1175,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     howTheyCallMe: 'Chú Trung',
     generation: -1,
     birthYear: 2019,
+    avatarUri: SAMPLE_AVATARS.chauDiep,
     isDeceased: false,
     notes: 'Đang học mầm non, múa hát rất dạn dĩ.',
   });
