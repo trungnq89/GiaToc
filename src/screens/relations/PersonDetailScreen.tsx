@@ -12,10 +12,10 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { getPersonById, deletePerson } from '../../db/repositories/personRepository';
-import { getDirectRelatives } from '../../db/repositories/relationshipRepository';
-import { Person } from '../../types';
+import { getDirectRelatives, linkRelatives, removeRelationship } from '../../db/repositories/relationshipRepository';
+import { Person, PersonSummary } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
-import { Avatar, ScreenHeader, Icon, useToast } from '../../components';
+import { Avatar, ScreenHeader, Icon, useToast, RelationPickerModal } from '../../components';
 import { getBranchLabel } from '../../utils/kinshipCalculator';
 import { parseLunarDateString, calculateAnniversaryCountdown } from '../../utils/lunarCalendar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,6 +36,9 @@ export function PersonDetailScreen() {
     children: Person[];
     siblings: Person[];
   }>({ parents: [], spouses: [], children: [], siblings: [] });
+
+  const [showSpouseModal, setShowSpouseModal] = useState(false);
+  const [showParentModal, setShowParentModal] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -84,6 +87,77 @@ export function PersonDetailScreen() {
     if (person?.phone) {
       Linking.openURL(`sms:${person.phone}`);
     }
+  };
+
+  const handleSelectSpouse = async (selected: PersonSummary) => {
+    if (!person) return;
+    try {
+      await linkRelatives(person.id, selected.id, 'spouse');
+      await loadData();
+      toast.show(`Đã gắn kết quan hệ vợ/chồng với ${selected.name}`, 'success');
+    } catch (e) {
+      console.warn('Link spouse error:', e);
+      Alert.alert('Lỗi', 'Không thể gắn kết quan hệ vợ/chồng.');
+    }
+  };
+
+  const handleClearSpouse = () => {
+    if (!person || relatives.spouses.length === 0) return;
+    Alert.alert(
+      'Gỡ bỏ quan hệ vợ/chồng',
+      'Bạn có chắc chắn muốn gỡ bỏ liên kết vợ/chồng của người này?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Gỡ bỏ',
+          style: 'destructive',
+          onPress: async () => {
+            for (const sp of relatives.spouses) {
+              await removeRelationship(person.id, sp.id);
+            }
+            await loadData();
+            setShowSpouseModal(false);
+            toast.show('Đã gỡ liên kết vợ/chồng', 'info');
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSelectParent = async (selected: PersonSummary) => {
+    if (!person) return;
+    try {
+      // person.id is child of selected.id
+      await linkRelatives(person.id, selected.id, 'parent');
+      await loadData();
+      toast.show(`Đã liên kết cha/mẹ: ${selected.name}`, 'success');
+    } catch (e) {
+      console.warn('Link parent error:', e);
+      Alert.alert('Lỗi', 'Không thể liên kết cha/mẹ.');
+    }
+  };
+
+  const handleClearParent = () => {
+    if (!person || relatives.parents.length === 0) return;
+    Alert.alert(
+      'Gỡ bỏ quan hệ cha/mẹ',
+      'Bạn có chắc chắn muốn gỡ bỏ liên kết cha/mẹ của người này?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Gỡ bỏ',
+          style: 'destructive',
+          onPress: async () => {
+            for (const p of relatives.parents) {
+              await removeRelationship(person.id, p.id);
+            }
+            await loadData();
+            setShowParentModal(false);
+            toast.show('Đã gỡ liên kết cha/mẹ', 'info');
+          },
+        },
+      ],
+    );
   };
 
   if (!person) {
@@ -187,7 +261,18 @@ export function PersonDetailScreen() {
 
           {/* Vợ / Chồng */}
           <View style={styles.relSection}>
-            <Text style={[typography.caption, styles.relSectionTitle]}>Vợ / Chồng:</Text>
+            <View style={styles.relSectionHeader}>
+              <Text style={[typography.caption, styles.relSectionTitle]}>Vợ / Chồng:</Text>
+              <TouchableOpacity
+                style={styles.addRelBtn}
+                onPress={() => setShowSpouseModal(true)}>
+                <Icon name="plus-circle-outline" size={13} color={colors.primary} />
+                <Text style={styles.addRelBtnText}>
+                  {relatives.spouses.length > 0 ? 'Thêm / Đổi Vợ Chồng' : '+ Thêm Vợ / Chồng'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {relatives.spouses.length > 0 ? (
               <View style={styles.relList}>
                 {relatives.spouses.map(s => (
@@ -201,13 +286,29 @@ export function PersonDetailScreen() {
                 ))}
               </View>
             ) : (
-              <Text style={styles.noRelText}>Chưa ghi nhận</Text>
+              <TouchableOpacity
+                style={styles.emptyRelPrompt}
+                onPress={() => setShowSpouseModal(true)}>
+                <Icon name="ring" size={14} color={colors.textMuted} />
+                <Text style={styles.noRelText}>Chưa ghi nhận • Chạm để chọn vợ/chồng</Text>
+              </TouchableOpacity>
             )}
           </View>
 
           {/* Cha Mẹ */}
           <View style={styles.relSection}>
-            <Text style={[typography.caption, styles.relSectionTitle]}>Cha Mẹ:</Text>
+            <View style={styles.relSectionHeader}>
+              <Text style={[typography.caption, styles.relSectionTitle]}>Cha Mẹ:</Text>
+              <TouchableOpacity
+                style={styles.addRelBtn}
+                onPress={() => setShowParentModal(true)}>
+                <Icon name="plus-circle-outline" size={13} color={colors.primary} />
+                <Text style={styles.addRelBtnText}>
+                  {relatives.parents.length > 0 ? 'Thêm / Đổi Cha Mẹ' : '+ Thêm Cha / Mẹ'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {relatives.parents.length > 0 ? (
               <View style={styles.relList}>
                 {relatives.parents.map(p => (
@@ -221,7 +322,12 @@ export function PersonDetailScreen() {
                 ))}
               </View>
             ) : (
-              <Text style={styles.noRelText}>Chưa ghi nhận</Text>
+              <TouchableOpacity
+                style={styles.emptyRelPrompt}
+                onPress={() => setShowParentModal(true)}>
+                <Icon name="account-child-circle" size={14} color={colors.textMuted} />
+                <Text style={styles.noRelText}>Chưa ghi nhận • Chạm để chọn cha/mẹ</Text>
+              </TouchableOpacity>
             )}
           </View>
 
@@ -360,6 +466,32 @@ export function PersonDetailScreen() {
           <Text style={styles.deleteBtnText}>Xóa người này khỏi danh bạ họ hàng</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modal chọn/đổi Vợ Chồng */}
+      <RelationPickerModal
+        visible={showSpouseModal}
+        title="Xác Định Quan Hệ Vợ / Chồng"
+        subtitle={`Chọn người phối ngẫu cho ${person.name}`}
+        relationType="spouse"
+        currentSelectedId={relatives.spouses[0]?.id}
+        excludePersonIds={[person.id]}
+        onSelect={handleSelectSpouse}
+        onClear={relatives.spouses.length > 0 ? handleClearSpouse : undefined}
+        onClose={() => setShowSpouseModal(false)}
+      />
+
+      {/* Modal chọn/đổi Cha Mẹ */}
+      <RelationPickerModal
+        visible={showParentModal}
+        title="Chọn Cha hoặc Mẹ"
+        subtitle={`Chọn cha hoặc mẹ cho ${person.name}`}
+        relationType="parent"
+        currentSelectedId={relatives.parents[0]?.id}
+        excludePersonIds={[person.id, ...relatives.children.map(c => c.id)]}
+        onSelect={handleSelectParent}
+        onClear={relatives.parents.length > 0 ? handleClearParent : undefined}
+        onClose={() => setShowParentModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -482,11 +614,38 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   relSection: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  relSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
   },
   relSectionTitle: {
     color: colors.textSecondary,
-    marginBottom: 4,
+    marginBottom: 0,
+    fontWeight: '600',
+  },
+  addRelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
+  },
+  addRelBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  emptyRelPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
   },
   relList: {
     flexDirection: 'row',

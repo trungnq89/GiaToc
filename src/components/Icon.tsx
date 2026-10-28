@@ -6,8 +6,9 @@ export interface IconProps {
   name: string;
   size?: number;
   color?: string;
+  style?: any;
 }
 
-export function Icon({ name, size = 24, color = colors.text }: IconProps) {
-  return <MaterialCommunityIcons name={name} size={size} color={color} />;
+export function Icon({ name, size = 24, color = colors.text, style }: IconProps) {
+  return <MaterialCommunityIcons name={name} size={size} color={color} style={style} />;
 }

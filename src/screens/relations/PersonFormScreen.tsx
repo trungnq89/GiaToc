@@ -14,11 +14,11 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { RootStackParamList } from '../../navigation/types';
 import { createPerson, updatePerson, getPersonById, listPersons } from '../../db/repositories/personRepository';
-import { linkRelatives } from '../../db/repositories/relationshipRepository';
+import { getDirectRelatives, linkRelatives, removeRelationship } from '../../db/repositories/relationshipRepository';
 import { Gender, FamilyBranch, PersonSummary } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
-import { Avatar, ScreenHeader, AppButton, Icon, useToast } from '../../components';
-import { KINSHIP_PRESETS, RelationPreset } from '../../utils/kinshipCalculator';
+import { Avatar, ScreenHeader, AppButton, Icon, useToast, RelationPickerModal } from '../../components';
+import { KINSHIP_PRESETS, RelationPreset, getBranchLabel } from '../../utils/kinshipCalculator';
 import { persistAvatarImage } from '../../utils/avatarStorage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -49,19 +49,17 @@ export function PersonFormScreen() {
   const [isDeceased, setIsDeceased] = useState(false);
   const [deathDateLunar, setDeathDateLunar] = useState('');
 
-  // Parent linking
-  const [allExistingPersons, setAllExistingPersons] = useState<PersonSummary[]>([]);
-  const [selectedParentId, setSelectedParentId] = useState<string | undefined>(undefined);
-  const [selectedSpouseId, setSelectedSpouseId] = useState<string | undefined>(undefined);
+  // Parent & Spouse relationship linking
+  const [selectedParent, setSelectedParent] = useState<PersonSummary | null>(null);
+  const [selectedSpouse, setSelectedSpouse] = useState<PersonSummary | null>(null);
+  const [initialParentId, setInitialParentId] = useState<string | undefined>(undefined);
+  const [initialSpouseId, setInitialSpouseId] = useState<string | undefined>(undefined);
+  const [showParentModal, setShowParentModal] = useState(false);
+  const [showSpouseModal, setShowSpouseModal] = useState(false);
 
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    listPersons().then(persons => {
-      // Exclude self when editing
-      setAllExistingPersons(persons.filter(p => p.id !== personId));
-    });
-
     if (personId) {
       getPersonById(personId).then(p => {
         if (p) {
@@ -80,6 +78,18 @@ export function PersonFormScreen() {
           setGeneration(p.generation);
           setIsDeceased(p.isDeceased);
           setDeathDateLunar(p.deathDateLunar || '');
+        }
+      });
+
+      // Load existing direct relatives
+      getDirectRelatives(personId).then(rels => {
+        if (rels.parents.length > 0) {
+          setSelectedParent(rels.parents[0]);
+          setInitialParentId(rels.parents[0].id);
+        }
+        if (rels.spouses.length > 0) {
+          setSelectedSpouse(rels.spouses[0]);
+          setInitialSpouseId(rels.spouses[0].id);
         }
       });
     }
@@ -142,18 +152,42 @@ export function PersonFormScreen() {
 
       if (isEditing && personId) {
         await updatePerson(personId, personPayload);
+
+        // Update Parent relationship if changed
+        const currentParentId = selectedParent?.id;
+        if (currentParentId !== initialParentId) {
+          if (initialParentId) {
+            await removeRelationship(personId, initialParentId);
+          }
+          if (currentParentId) {
+            // personId is child of currentParentId
+            await linkRelatives(personId, currentParentId, 'parent');
+          }
+        }
+
+        // Update Spouse relationship if changed
+        const currentSpouseId = selectedSpouse?.id;
+        if (currentSpouseId !== initialSpouseId) {
+          if (initialSpouseId) {
+            await removeRelationship(personId, initialSpouseId);
+          }
+          if (currentSpouseId) {
+            await linkRelatives(personId, currentSpouseId, 'spouse');
+          }
+        }
+
         toast.show('Đã cập nhật thông tin người thân', 'success');
       } else {
         const created = await createPerson(personPayload);
 
-        // Link with selected Parent
-        if (selectedParentId) {
-          await linkRelatives(selectedParentId, created.id, 'parent');
+        // Link with selected Parent (created.id is child of selectedParent.id)
+        if (selectedParent?.id) {
+          await linkRelatives(created.id, selectedParent.id, 'parent');
         }
 
         // Link with selected Spouse
-        if (selectedSpouseId) {
-          await linkRelatives(selectedSpouseId, created.id, 'spouse');
+        if (selectedSpouse?.id) {
+          await linkRelatives(created.id, selectedSpouse.id, 'spouse');
         }
 
         toast.show('Đã thêm người thân mới', 'success');
@@ -354,49 +388,131 @@ export function PersonFormScreen() {
           </View>
         </View>
 
-        {/* Liên kết gia đình trực hệ (nếu thêm mới) */}
-        {!isEditing && allExistingPersons.length > 0 && (
-          <View style={styles.card}>
-            <Text style={[typography.subtitle1, styles.cardTitle]}>
-              Liên Kết Gia Phả (Tùy chọn)
+        {/* Liên kết gia phả trực hệ */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Icon name="family-tree" size={22} color={colors.primary} />
+            <Text style={[typography.subtitle1, styles.cardTitleWithIcon]}>
+              Liên Kết Gia Phả
             </Text>
-
-            <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 8 }]}>
-              Chọn người trong họ là Cha/Mẹ hoặc Vợ/Chồng để app tự động móc nối gia phả:
-            </Text>
-
-            {/* Chọn Cha/Mẹ */}
-            <Text style={[typography.subtitle2, styles.label]}>Là con của ai?</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.parentSelectScroll}>
-              <TouchableOpacity
-                style={[styles.personSelectChip, !selectedParentId && styles.personSelectChipActive]}
-                onPress={() => setSelectedParentId(undefined)}>
-                <Text style={!selectedParentId ? styles.personSelectTextActive : styles.personSelectText}>
-                  Không chọn
-                </Text>
-              </TouchableOpacity>
-              {allExistingPersons.map(p => (
-                <TouchableOpacity
-                  key={p.id}
-                  style={[
-                    styles.personSelectChip,
-                    selectedParentId === p.id && styles.personSelectChipActive,
-                  ]}
-                  onPress={() => setSelectedParentId(p.id)}>
-                  <Avatar uri={p.avatarUri} name={p.name} gender={p.gender} size="sm" />
-                  <Text
-                    style={
-                      selectedParentId === p.id
-                        ? styles.personSelectTextActive
-                        : styles.personSelectText
-                    }>
-                    {p.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
           </View>
-        )}
+
+          <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.md }]}>
+            Gắn kết người thân với Cha/Mẹ và Vợ/Chồng để hệ thống tự động vẽ cây gia phả chuẩn xác.
+          </Text>
+
+          {/* 1. Chọn Cha/Mẹ */}
+          <Text style={[typography.subtitle2, styles.relationSubHeader]}>
+            1. Là con của ai? (Cha / Mẹ)
+          </Text>
+
+          {selectedParent ? (
+            <View style={styles.linkedRelationCard}>
+              <Avatar
+                uri={selectedParent.avatarUri}
+                name={selectedParent.name}
+                gender={selectedParent.gender}
+                size="md"
+                isDeceased={selectedParent.isDeceased}
+              />
+              <View style={styles.linkedInfo}>
+                <Text style={styles.linkedName}>{selectedParent.name}</Text>
+                <Text style={styles.linkedDetail}>
+                  {selectedParent.customRelationToMe || selectedParent.inferredRelationToMe || 'Bậc trên'}
+                  {selectedParent.birthYear ? ` • Sinh ${selectedParent.birthYear}` : ''} • {getBranchLabel(selectedParent.branch)}
+                </Text>
+              </View>
+
+              <View style={styles.linkedActions}>
+                <TouchableOpacity
+                  style={styles.changeRelBtn}
+                  onPress={() => setShowParentModal(true)}>
+                  <Icon name="pencil" size={14} color={colors.primary} />
+                  <Text style={styles.changeRelText}>Đổi</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.removeRelBtn}
+                  onPress={() => setSelectedParent(null)}>
+                  <Icon name="close" size={16} color={colors.danger} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.selectRelButton}
+              activeOpacity={0.7}
+              onPress={() => setShowParentModal(true)}>
+              <View style={styles.selectRelIconWrap}>
+                <Icon name="account-child-circle" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.selectRelButtonTitle}>+ Chọn Cha hoặc Mẹ</Text>
+                <Text style={styles.selectRelButtonSub}>
+                  Tìm kiếm theo tên người thân trong họ
+                </Text>
+              </View>
+              <Icon name="magnify" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          )}
+
+          {/* 2. Xác định quan hệ Vợ / Chồng */}
+          <Text style={[typography.subtitle2, styles.relationSubHeader, { marginTop: spacing.lg }]}>
+            2. Quan hệ Vợ / Chồng
+          </Text>
+
+          {selectedSpouse ? (
+            <View style={styles.linkedRelationCard}>
+              <Avatar
+                uri={selectedSpouse.avatarUri}
+                name={selectedSpouse.name}
+                gender={selectedSpouse.gender}
+                size="md"
+                isDeceased={selectedSpouse.isDeceased}
+              />
+              <View style={styles.linkedInfo}>
+                <Text style={styles.linkedName}>{selectedSpouse.name}</Text>
+                <Text style={styles.linkedDetail}>
+                  {selectedSpouse.customRelationToMe || selectedSpouse.inferredRelationToMe || 'Người phối ngẫu'}
+                  {selectedSpouse.birthYear ? ` • Sinh ${selectedSpouse.birthYear}` : ''} • {getBranchLabel(selectedSpouse.branch)}
+                </Text>
+              </View>
+
+              <View style={styles.linkedActions}>
+                <TouchableOpacity
+                  style={styles.changeRelBtn}
+                  onPress={() => setShowSpouseModal(true)}>
+                  <Icon name="pencil" size={14} color={colors.primary} />
+                  <Text style={styles.changeRelText}>Đổi</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.removeRelBtn}
+                  onPress={() => setSelectedSpouse(null)}>
+                  <Icon name="close" size={16} color={colors.danger} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.selectRelButton}
+              activeOpacity={0.7}
+              onPress={() => setShowSpouseModal(true)}>
+              <View style={[styles.selectRelIconWrap, { backgroundColor: '#FDF2F8' }]}>
+                <Icon name="ring" size={20} color="#DB2777" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.selectRelButtonTitle, { color: '#BE185D' }]}>
+                  + Xác định Vợ hoặc Chồng
+                </Text>
+                <Text style={styles.selectRelButtonSub}>
+                  Tìm kiếm theo tên người phối ngẫu
+                </Text>
+              </View>
+              <Icon name="magnify" size={20} color="#DB2777" />
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Tình trạng & Thông tin chi tiết */}
         <View style={styles.card}>
@@ -482,6 +598,32 @@ export function PersonFormScreen() {
           style={styles.saveBtn}
         />
       </ScrollView>
+
+      {/* Modal chọn Cha/Mẹ */}
+      <RelationPickerModal
+        visible={showParentModal}
+        title="Chọn Cha hoặc Mẹ"
+        subtitle="Tìm kiếm theo tên người thân trong họ hàng"
+        relationType="parent"
+        currentSelectedId={selectedParent?.id}
+        excludePersonIds={personId ? [personId] : []}
+        onSelect={p => setSelectedParent(p)}
+        onClear={() => setSelectedParent(null)}
+        onClose={() => setShowParentModal(false)}
+      />
+
+      {/* Modal chọn Vợ/Chồng */}
+      <RelationPickerModal
+        visible={showSpouseModal}
+        title="Xác Định Quan Hệ Vợ / Chồng"
+        subtitle="Tìm kiếm theo tên người phối ngẫu"
+        relationType="spouse"
+        currentSelectedId={selectedSpouse?.id}
+        excludePersonIds={personId ? [personId] : []}
+        onSelect={p => setSelectedSpouse(p)}
+        onClear={() => setSelectedSpouse(null)}
+        onClose={() => setShowSpouseModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -661,34 +803,100 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontWeight: '700',
   },
-  parentSelectScroll: {
-    flexDirection: 'row',
-    marginTop: spacing.xs,
-  },
-  personSelectChip: {
+  cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.full,
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  cardTitleWithIcon: {
+    color: colors.text,
+    marginBottom: 0,
+    fontWeight: '700',
+  },
+  relationSubHeader: {
+    color: colors.text,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  linkedRelationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.sm,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.background,
-    marginRight: spacing.xs,
-    gap: 4,
   },
-  personSelectChipActive: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primary,
+  linkedInfo: {
+    flex: 1,
+    marginLeft: spacing.sm,
   },
-  personSelectText: {
-    fontSize: 12,
+  linkedName: {
+    fontSize: 14,
+    fontWeight: '700',
     color: colors.text,
   },
-  personSelectTextActive: {
+  linkedDetail: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  linkedActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  changeRelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryLight,
+  },
+  changeRelText: {
     fontSize: 12,
     color: colors.primary,
+    fontWeight: '600',
+  },
+  removeRelBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectRelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    backgroundColor: colors.background,
+  },
+  selectRelIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectRelButtonTitle: {
+    fontSize: 14,
     fontWeight: '700',
+    color: colors.primary,
+  },
+  selectRelButtonSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 1,
   },
   switchRow: {
     flexDirection: 'row',

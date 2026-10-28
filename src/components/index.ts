@@ -6,3 +6,4 @@ export * from './AppButton';
 export * from './ScreenHeader';
 export * from './EmptyState';
 export * from './Toast';
+export * from './RelationPickerModal';
