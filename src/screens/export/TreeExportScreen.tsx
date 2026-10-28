@@ -9,6 +9,7 @@ import {
   Share,
   Platform,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -69,7 +70,27 @@ export function TreeExportScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [lastExportedUri, setLastExportedUri] = useState<string | null>(null);
 
+  const { width: windowWidth } = useWindowDimensions();
+  const [zoomLevel, setZoomLevel] = useState<number>(0.85);
+  const [canvasHeight, setCanvasHeight] = useState<number>(2600);
+
   const canvasRef = useRef<any>(null);
+
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(1.8, Math.round((prev + 0.15) * 100) / 100));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(0.3, Math.round((prev - 0.15) * 100) / 100));
+  };
+
+  const handleResetZoom = () => {
+    setZoomLevel(1.0);
+  };
+
+  const handleToggleFit = () => {
+    setZoomLevel(prev => (prev > 0.5 ? 0.38 : 1.0));
+  };
 
   const loadTreeData = useCallback(async () => {
     try {
@@ -283,6 +304,12 @@ export function TreeExportScreen() {
 
   const captureCanvasImage = async (): Promise<string | null> => {
     if (!canvasRef.current) return null;
+    const previousZoom = zoomLevel;
+    // Always export at 100% full crisp resolution
+    if (previousZoom !== 1.0) {
+      setZoomLevel(1.0);
+      await new Promise(resolve => setTimeout(() => resolve(undefined), 80));
+    }
     try {
       const uri = await captureRef(canvasRef.current, {
         format: 'png',
@@ -293,6 +320,10 @@ export function TreeExportScreen() {
     } catch (e) {
       console.warn('Capture tree error:', e);
       return null;
+    } finally {
+      if (previousZoom !== 1.0) {
+        setZoomLevel(previousZoom);
+      }
     }
   };
 
@@ -541,6 +572,30 @@ export function TreeExportScreen() {
             selected={theme === 'modern'}
             onPress={() => setTheme('modern')}
           />
+
+          <View style={styles.separator} />
+
+          {/* Quick Zoom Presets */}
+          <Chip
+            label="🔍 Toàn cảnh (38%)"
+            selected={zoomLevel <= 0.45}
+            onPress={() => setZoomLevel(0.38)}
+          />
+          <Chip
+            label="🔍 70%"
+            selected={zoomLevel > 0.45 && zoomLevel <= 0.8}
+            onPress={() => setZoomLevel(0.7)}
+          />
+          <Chip
+            label="🔍 Chuẩn (100%)"
+            selected={zoomLevel > 0.8 && zoomLevel <= 1.15}
+            onPress={() => setZoomLevel(1.0)}
+          />
+          <Chip
+            label="🔍 Phóng to (140%)"
+            selected={zoomLevel > 1.15}
+            onPress={() => setZoomLevel(1.4)}
+          />
         </ScrollView>
       </View>
 
@@ -549,20 +604,45 @@ export function TreeExportScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={true}
-          contentContainerStyle={styles.horizontalScrollContent}>
+          contentContainerStyle={[
+            styles.horizontalScrollContent,
+            { minWidth: Math.max(windowWidth, Math.round(1480 * zoomLevel + 32)) },
+          ]}>
           <ScrollView
             showsVerticalScrollIndicator={true}
-            contentContainerStyle={styles.verticalScrollContent}>
-            {/* The Actual Poster to Capture */}
+            contentContainerStyle={[
+              styles.verticalScrollContent,
+              { minHeight: Math.round(canvasHeight * zoomLevel + 60) },
+            ]}>
+            {/* Scaled Canvas Container */}
             <View
-              ref={canvasRef}
-              collapsable={false}
-              style={[
-                styles.posterCanvas,
-                { backgroundColor: themeColors.bg, borderColor: themeColors.border },
-              ]}>
-              {/* Inner Decorative Golden Border */}
-              <View style={[styles.innerBorder, { borderColor: themeColors.border }]}>
+              style={{
+                width: Math.round(1480 * zoomLevel),
+                height: Math.round(canvasHeight * zoomLevel),
+                alignItems: 'flex-start',
+                justifyContent: 'flex-start',
+              }}>
+              {/* The Actual Poster to Capture */}
+              <View
+                ref={canvasRef}
+                collapsable={false}
+                onLayout={e => {
+                  const h = e.nativeEvent.layout.height;
+                  if (h > 400 && Math.abs(h - canvasHeight) > 20) {
+                    setCanvasHeight(h);
+                  }
+                }}
+                style={[
+                  styles.posterCanvas,
+                  {
+                    backgroundColor: themeColors.bg,
+                    borderColor: themeColors.border,
+                    transform: [{ scale: zoomLevel }],
+                    transformOrigin: ['0%', '0%', 0],
+                  } as any,
+                ]}>
+                {/* Inner Decorative Golden Border */}
+                <View style={[styles.innerBorder, { borderColor: themeColors.border }]}>
                 {/* Traditional Vietnamese Hoành Phi Header */}
                 <View style={styles.posterHeader}>
                   <View style={styles.ornamentRow}>
@@ -718,8 +798,56 @@ export function TreeExportScreen() {
                 </View>
               </View>
             </View>
+            </View>
           </ScrollView>
         </ScrollView>
+
+        {/* Floating Zoom Action Controls Overlay */}
+        <View style={styles.floatingZoomWidget}>
+          <TouchableOpacity
+            style={[styles.zoomBtn, zoomLevel >= 1.8 && styles.zoomBtnDisabled]}
+            activeOpacity={0.7}
+            onPress={handleZoomIn}
+            disabled={zoomLevel >= 1.8}>
+            <Icon name="plus" size={20} color={zoomLevel >= 1.8 ? '#94A3B8' : '#FFFFFF'} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.zoomLevelBadge}
+            activeOpacity={0.7}
+            onPress={handleResetZoom}>
+            <Text style={styles.zoomLevelText}>{Math.round(zoomLevel * 100)}%</Text>
+            <Text style={styles.zoomSubText}>Gốc</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.zoomBtn, zoomLevel <= 0.3 && styles.zoomBtnDisabled]}
+            activeOpacity={0.7}
+            onPress={handleZoomOut}
+            disabled={zoomLevel <= 0.3}>
+            <Icon name="minus" size={20} color={zoomLevel <= 0.3 ? '#94A3B8' : '#FFFFFF'} />
+          </TouchableOpacity>
+
+          <View style={styles.zoomDivider} />
+
+          <TouchableOpacity
+            style={[styles.zoomFitBtn, zoomLevel <= 0.45 && styles.zoomFitBtnActive]}
+            activeOpacity={0.7}
+            onPress={handleToggleFit}>
+            <Icon
+              name={zoomLevel <= 0.45 ? 'arrow-expand-all' : 'fit-to-screen-outline'}
+              size={18}
+              color={zoomLevel <= 0.45 ? '#F59E0B' : '#FFFFFF'}
+            />
+            <Text
+              style={[
+                styles.zoomFitText,
+                zoomLevel <= 0.45 && { color: '#F59E0B', fontWeight: '700' },
+              ]}>
+              {zoomLevel <= 0.45 ? '100%' : 'Toàn cảnh'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Floating Bottom Action Bar */}
@@ -790,7 +918,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: radius.lg,
     borderWidth: 2,
-    minWidth: 1480,
+    width: 1480,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -1101,5 +1229,73 @@ const styles = StyleSheet.create({
     ...typography.subtitle2,
     color: colors.primary,
     fontWeight: '700',
+  },
+  floatingZoomWidget: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    borderRadius: radius.xl,
+    padding: 6,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#C59B27',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    gap: 4,
+    zIndex: 100,
+  },
+  zoomBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomBtnDisabled: {
+    opacity: 0.35,
+  },
+  zoomLevelBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+  },
+  zoomLevelText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FDFBF7',
+  },
+  zoomSubText: {
+    fontSize: 9,
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+  },
+  zoomDivider: {
+    width: 28,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginVertical: 2,
+  },
+  zoomFitBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  zoomFitBtnActive: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  zoomFitText: {
+    fontSize: 10,
+    color: '#E2E8F0',
+    fontWeight: '600',
   },
 });
