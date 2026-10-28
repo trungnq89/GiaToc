@@ -43,17 +43,138 @@ export interface FamilyUnit {
   childIds: string[];
 }
 
-export interface FamilyBranchGroup {
-  branchKey: string;
-  parentLabel?: string;
-  units: FamilyUnit[];
+export interface FamilyTreeNode {
+  id: string;
+  unit: FamilyUnit;
+  generation: number;
+  children: FamilyTreeNode[];
+  subtreeWidth: number;
 }
 
-export interface GenerationTier {
+export interface GenerationMetadata {
   generation: number;
-  label: string;
-  subLabel: string;
-  branchGroups: FamilyBranchGroup[];
+  orderText: string;
+  romanNumeral: string;
+  rankTitle: string;
+  description: string;
+}
+
+export const CARD_WIDTH = 132;
+export const CARD_HEIGHT = 180;
+export const MARITAL_GAP = 54;
+export const SIBLING_GAP = 28;
+export const ROOT_GAP = 64;
+export const STEM_DROP = 26;
+export const STEM_BRANCH = 24;
+export const ROW_HEIGHT = CARD_HEIGHT + STEM_DROP + STEM_BRANCH; // 230
+
+export function getFamilyUnitWidth(unit: FamilyUnit): number {
+  let w = CARD_WIDTH;
+  if (unit.spouse) {
+    w += MARITAL_GAP + CARD_WIDTH;
+  }
+  if (unit.extraSpouses && unit.extraSpouses.length > 0) {
+    w += unit.extraSpouses.length * (MARITAL_GAP + CARD_WIDTH);
+  }
+  return w;
+}
+
+export const GENERATION_DEFS: Record<number, GenerationMetadata> = {
+  4: {
+    generation: 4,
+    orderText: 'ĐỜI THỨ NHẤT',
+    romanNumeral: 'ĐỜI I',
+    rankTitle: 'BẬC CAO TỔ (KHỞI TỔ)',
+    description: 'Cụ Kỵ Khởi Tổ, Cao Tổ Phụ, Cao Tổ Mẫu',
+  },
+  3: {
+    generation: 3,
+    orderText: 'ĐỜI THỨ HAI',
+    romanNumeral: 'ĐỜI II',
+    rankTitle: 'BẬC TẰNG TỔ (CỤ CỐ)',
+    description: 'Cụ Cố, Cụ Bác, Cụ Chú, Cụ Cô',
+  },
+  2: {
+    generation: 2,
+    orderText: 'ĐỜI THỨ BA',
+    romanNumeral: 'ĐỜI III',
+    rankTitle: 'BẬC ÔNG BÀ (TIỀN BỐI)',
+    description: 'Ông Bà Nội, Ông Bà Ngoại, Ông Bác, Bà Cô',
+  },
+  1: {
+    generation: 1,
+    orderText: 'ĐỜI THỨ TƯ',
+    romanNumeral: 'ĐỜI IV',
+    rankTitle: 'BẬC CHA CHÚ (CÔ DÌ BÁC)',
+    description: 'Bố, Mẹ, Bác Cả, Chú Ba, Cô Tư, Cậu Út',
+  },
+  0: {
+    generation: 0,
+    orderText: 'ĐỜI THỨ NĂM',
+    romanNumeral: 'ĐỜI V',
+    rankTitle: 'THẾ HỆ TÔI & ANH CHỊ EM',
+    description: 'Tôi, Vợ/Chồng, Anh Chị Em ruột & Họ hàng',
+  },
+  '-1': {
+    generation: -1,
+    orderText: 'ĐỜI THỨ SÁU',
+    romanNumeral: 'ĐỜI VI',
+    rankTitle: 'BẬC CON CHÁU KẾ TỤC',
+    description: 'Con trai cả, Con gái út, Cháu chắt đời mới',
+  },
+};
+
+export function getGenerationMeta(gen: number): GenerationMetadata {
+  if (GENERATION_DEFS[gen]) return GENERATION_DEFS[gen];
+  return {
+    generation: gen,
+    orderText: `THẾ HỆ ${gen > 0 ? `+${gen}` : gen}`,
+    romanNumeral: `GEN ${gen}`,
+    rankTitle: gen > 0 ? `BẬC TIỀN NHÂN (${gen})` : `BẬC HẬU DUỆ (${gen})`,
+    description: 'Thành viên gia tộc',
+  };
+}
+
+function buildTreeNode(
+  unit: FamilyUnit,
+  personToUnitMap: Map<string, FamilyUnit>,
+  unitChildrenMap: Map<string, FamilyUnit[]>,
+  visitedUnits: Set<string>,
+): FamilyTreeNode {
+  visitedUnits.add(unit.id);
+
+  const rawChildren = unitChildrenMap.get(unit.id) || [];
+  const validChildren = rawChildren.filter(cu => !visitedUnits.has(cu.id));
+
+  // Sắp xếp con theo năm sinh tăng dần, rồi đến tên
+  validChildren.sort((a, b) => {
+    const yA = a.primary.birthYear ?? 9999;
+    const yB = b.primary.birthYear ?? 9999;
+    if (yA !== yB) return yA - yB;
+    return a.primary.name.localeCompare(b.primary.name);
+  });
+
+  const childrenNodes = validChildren.map(cu =>
+    buildTreeNode(cu, personToUnitMap, unitChildrenMap, visitedUnits),
+  );
+
+  const unitWidth = getFamilyUnitWidth(unit);
+  let subtreeWidth = unitWidth;
+
+  if (childrenNodes.length > 0) {
+    const childrenTotalWidth =
+      childrenNodes.reduce((sum, c) => sum + c.subtreeWidth, 0) +
+      (childrenNodes.length - 1) * SIBLING_GAP;
+    subtreeWidth = Math.max(unitWidth, childrenTotalWidth);
+  }
+
+  return {
+    id: unit.id,
+    unit,
+    generation: unit.primary.generation,
+    children: childrenNodes,
+    subtreeWidth,
+  };
 }
 
 export function TreeExportScreen() {
@@ -66,50 +187,32 @@ export function TreeExportScreen() {
     route.params?.defaultBranch || 'all',
   );
   const [theme, setTheme] = useState<ThemeStyle>('heritage');
-  const [tiers, setTiers] = useState<GenerationTier[]>([]);
+  const [rootTreeNodes, setRootTreeNodes] = useState<FamilyTreeNode[]>([]);
+  const [generationList, setGenerationList] = useState<number[]>([]);
+  const [maxGen, setMaxGen] = useState<number>(4);
   const [totalCount, setTotalCount] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [lastExportedUri, setLastExportedUri] = useState<string | null>(null);
 
   const { width: windowWidth } = useWindowDimensions();
   const [zoomLevel, setZoomLevel] = useState<number>(0.65);
-  const [canvasHeight, setCanvasHeight] = useState<number>(2600);
+  const [canvasHeight, setCanvasHeight] = useState<number>(2400);
 
   const canvasRef = useRef<any>(null);
 
-  // Dynamic Canvas Width calculation based on the widest generation tier
-  // Đảm bảo mỗi thế hệ hiển thị trọn vẹn trên 1 tầng ngang, chiều rộng ảnh tự co giãn theo thế hệ đông nhất
+  // Dynamic Canvas Width calculation based on the subtrees and right-side legend
   const canvasWidth = useMemo(() => {
-    if (tiers.length === 0) return 1480;
+    if (rootTreeNodes.length === 0) return 1480;
 
-    const getUnitWidth = (unit: FamilyUnit) => {
-      // Primary member: 132
-      let w = 132;
-      // Spouse: +54 connector + 132 card
-      if (unit.spouse) w += 54 + 132;
-      // Extra spouses: each +54 connector + 132 card
-      if (unit.extraSpouses && unit.extraSpouses.length > 0) {
-        w += unit.extraSpouses.length * (54 + 132);
-      }
-      return w + 16; // 8px margin each side
-    };
+    const rootTreesTotalWidth =
+      rootTreeNodes.reduce((sum, r) => sum + r.subtreeWidth, 0) +
+      Math.max(0, rootTreeNodes.length - 1) * ROOT_GAP;
 
-    const getBranchWidth = (bg: FamilyBranchGroup) => {
-      const unitsW = bg.units.reduce((sum, u) => sum + getUnitWidth(u), 0);
-      const gapW = Math.max(0, bg.units.length - 1) * 16; // 16px gap between siblings
-      return unitsW + gapW + 24; // 24px branch padding
-    };
+    const legendWidth = 240;
+    const padding = 160;
 
-    const getTierWidth = (tier: GenerationTier) => {
-      const branchesW = tier.branchGroups.reduce((sum, bg) => sum + getBranchWidth(bg), 0);
-      const gapW = Math.max(0, tier.branchGroups.length - 1) * 32; // 32px gap between branches
-      return branchesW + gapW;
-    };
-
-    const maxTierW = Math.max(...tiers.map(getTierWidth), 1200);
-    // Add canvas padding (inner border padding 24*2 + canvas padding 16*2 + margins = ~200px)
-    return Math.max(1400, Math.round(maxTierW + 200));
-  }, [tiers]);
+    return Math.max(1400, Math.round(rootTreesTotalWidth + legendWidth + padding));
+  }, [rootTreeNodes]);
 
   const fitZoom = useMemo(() => {
     if (!canvasWidth || !windowWidth) return 0.35;
@@ -188,130 +291,133 @@ export function TreeExportScreen() {
         }
       }
 
-      // Helper to build a generation tier
-      const buildTier = (
-        genNum: number,
-        label: string,
-        subLabel: string,
-      ): GenerationTier | null => {
-        const genPersons = all.filter(p =>
-          genNum === 4
-            ? p.generation >= 4
-            : genNum === -1
-            ? p.generation <= -1
-            : p.generation === genNum,
-        );
-        if (genPersons.length === 0) return null;
+      // Sắp xếp danh sách thành viên theo thế hệ giảm dần, năm sinh tăng dần
+      const sortedPersons = [...all].sort((a, b) => {
+        if (b.generation !== a.generation) return b.generation - a.generation;
+        const yA = a.birthYear ?? 9999;
+        const yB = b.birthYear ?? 9999;
+        return yA - yB;
+      });
 
-        // Group into FamilyUnits (Couples or Singles)
-        const visited = new Set<string>();
-        const rawUnits: FamilyUnit[] = [];
+      // Nhóm thành các đơn vị gia đình FamilyUnit (Đơn thân hoặc Cặp vợ chồng)
+      const visited = new Set<string>();
+      const allUnits: FamilyUnit[] = [];
 
-        for (const p of genPersons) {
-          if (visited.has(p.id)) continue;
-          visited.add(p.id);
+      for (const p of sortedPersons) {
+        if (visited.has(p.id)) continue;
+        visited.add(p.id);
 
-          const spouseIds = spouseMap.get(p.id) || [];
-          const matchedSpouses = spouseIds
-            .map(id => personMap.get(id))
-            .filter((sp): sp is PersonSummary => !!sp && genPersons.some(gp => gp.id === sp.id));
+        const spouseIds = spouseMap.get(p.id) || [];
+        const matchedSpouses = spouseIds
+          .map(id => personMap.get(id))
+          .filter((sp): sp is PersonSummary => !!sp && all.some(ap => ap.id === sp.id));
 
-          if (matchedSpouses.length > 0) {
-            matchedSpouses.forEach(sp => visited.add(sp.id));
+        if (matchedSpouses.length > 0) {
+          matchedSpouses.forEach(sp => visited.add(sp.id));
 
-            // Put male first if primary is female and one spouse is male
-            let primary = p;
-            let spouses = matchedSpouses;
-            if (p.gender === 'female' && matchedSpouses.some(sp => sp.gender === 'male')) {
-              const maleSp = matchedSpouses.find(sp => sp.gender === 'male')!;
-              primary = maleSp;
-              spouses = [p, ...matchedSpouses.filter(sp => sp.id !== maleSp.id)];
-            }
-
-            const allSpouseIds = spouses.map(s => s.id);
-            const combinedChildren = Array.from(
-              new Set([
-                ...(childrenMap.get(primary.id) || []),
-                ...spouses.flatMap(s => childrenMap.get(s.id) || []),
-              ]),
-            );
-
-            rawUnits.push({
-              id: `couple_${primary.id}_${allSpouseIds.join('_')}`,
-              primary,
-              spouse: spouses[0],
-              extraSpouses: spouses.slice(1),
-              childIds: combinedChildren,
-            });
-          } else {
-            rawUnits.push({
-              id: `single_${p.id}`,
-              primary: p,
-              childIds: childrenMap.get(p.id) || [],
-            });
+          let primary = p;
+          let spouses = matchedSpouses;
+          if (p.gender === 'female' && matchedSpouses.some(sp => sp.gender === 'male')) {
+            const maleSp = matchedSpouses.find(sp => sp.gender === 'male')!;
+            primary = maleSp;
+            spouses = [p, ...matchedSpouses.filter(sp => sp.id !== maleSp.id)];
           }
-        }
 
-        // Group rawUnits by parent branch origin
-        const branchMap = new Map<string, FamilyUnit[]>();
-        for (const unit of rawUnits) {
-          const parentIds = parentsMap.get(unit.primary.id) || [];
-          const key = parentIds.length > 0 ? parentIds.sort().join('_') : 'root';
-          const list = branchMap.get(key) || [];
-          list.push(unit);
-          branchMap.set(key, list);
-        }
+          const allSpouseIds = spouses.map(s => s.id);
+          const combinedChildren = Array.from(
+            new Set([
+              ...(childrenMap.get(primary.id) || []),
+              ...spouses.flatMap(s => childrenMap.get(s.id) || []),
+            ]),
+          ).filter(cid => personMap.has(cid));
 
-        const branchGroups: FamilyBranchGroup[] = [];
-        branchMap.forEach((units, key) => {
-          let parentLabel: string | undefined = undefined;
-          if (key !== 'root') {
-            const pIds = key.split('_');
-            const parentNames = pIds
-              .map(pid => {
-                const parent = personMap.get(pid);
-                return parent?.nickname || parent?.name;
-              })
-              .filter(Boolean);
-            if (parentNames.length > 0) {
-              parentLabel = `Chi con của ${parentNames.join(' & ')}`;
-            }
-          }
-          branchGroups.push({
-            branchKey: key,
-            parentLabel,
-            units,
+          allUnits.push({
+            id: `unit_${primary.id}_${allSpouseIds.join('_')}`,
+            primary,
+            spouse: spouses[0],
+            extraSpouses: spouses.slice(1),
+            childIds: combinedChildren,
           });
-        });
+        } else {
+          // Người độc thân (chưa lập gia đình hoặc không có vợ/chồng trong danh sách)
+          const childIds = (childrenMap.get(p.id) || []).filter(cid => personMap.has(cid));
+          allUnits.push({
+            id: `unit_${p.id}`,
+            primary: p,
+            childIds,
+          });
+        }
+      }
 
-        return {
-          generation: genNum,
-          label,
-          subLabel,
-          branchGroups,
-        };
-      };
+      // Bản đồ ánh xạ từng cá nhân tới FamilyUnit chứa cá nhân đó
+      const personToUnitMap = new Map<string, FamilyUnit>();
+      for (const u of allUnits) {
+        personToUnitMap.set(u.primary.id, u);
+        if (u.spouse) personToUnitMap.set(u.spouse.id, u);
+        u.extraSpouses?.forEach(sp => personToUnitMap.set(sp.id, u));
+      }
 
-      const list: GenerationTier[] = [];
-      const t4 = buildTier(4, 'ĐỜI THỨ NHẤT: BẬC CAO TỔ (KHỞI TỔ)', 'Cụ Kỵ Khởi Tổ, Cao Tổ Phụ, Cao Tổ Mẫu');
-      if (t4) list.push(t4);
+      // Xác định quan hệ cha mẹ - con cái giữa các FamilyUnit
+      const unitChildrenMap = new Map<string, FamilyUnit[]>();
+      const unitParentMap = new Map<string, string>(); // childUnitId -> parentUnitId
 
-      const t3 = buildTier(3, 'ĐỜI THỨ HAI: BẬC TẰNG TỔ (CỤ CỐ)', 'Cụ Cố, Cụ Bác, Cụ Chú, Cụ Cô');
-      if (t3) list.push(t3);
+      for (const u of allUnits) {
+        const childUnitList: FamilyUnit[] = [];
+        const seenUnits = new Set<string>();
 
-      const t2 = buildTier(2, 'ĐỜI THỨ BA: BẬC ÔNG BÀ (TIỀN BỐI)', 'Ông Nội, Bà Nội, Ông Bác, Bà Cô');
-      if (t2) list.push(t2);
+        for (const cid of u.childIds) {
+          const cu = personToUnitMap.get(cid);
+          if (cu && cu.id !== u.id && !seenUnits.has(cu.id)) {
+            if (!unitParentMap.has(cu.id)) {
+              seenUnits.add(cu.id);
+              childUnitList.push(cu);
+              unitParentMap.set(cu.id, u.id);
+            }
+          }
+        }
+        unitChildrenMap.set(u.id, childUnitList);
+      }
 
-      const t1 = buildTier(1, 'ĐỜI THỨ TƯ: BẬC CHA CHÚ (CÔ DÌ BÁC)', 'Bố, Mẹ, Bác Cả, Chú Ba, Cô Tư, Chú Út');
-      if (t1) list.push(t1);
+      // Đơn vị gốc (Roots) là các đơn vị không có đơn vị cha mẹ trong bộ lọc hiện tại
+      const rootUnits = allUnits.filter(u => !unitParentMap.has(u.id));
+      rootUnits.sort((a, b) => {
+        if (b.primary.generation !== a.primary.generation) {
+          return b.primary.generation - a.primary.generation;
+        }
+        const yA = a.primary.birthYear ?? 9999;
+        const yB = b.primary.birthYear ?? 9999;
+        return yA - yB;
+      });
 
-      const t0 = buildTier(0, 'ĐỜI THỨ NĂM: THẾ HỆ CỦA TÔI & ANH CHỊ EM', 'Tôi, Vợ, Anh Chị Em ruột và Anh Chị Em họ');
-      if (t0) list.push(t0);
+      // Xây dựng cây phân cấp đệ quy
+      const visitedInTree = new Set<string>();
+      const treeNodes: FamilyTreeNode[] = [];
 
-      const tm1 = buildTier(-1, 'ĐỜI THỨ SÁU: BẬC CON CHÁU ĐỜI MỚI', 'Con trai cả, Con gái út, Các cháu đời kế tục');
-      if (tm1) list.push(tm1);
+      for (const ru of rootUnits) {
+        if (!visitedInTree.has(ru.id)) {
+          treeNodes.push(buildTreeNode(ru, personToUnitMap, unitChildrenMap, visitedInTree));
+        }
+      }
 
-      setTiers(list);
+      // Bổ sung các cụm nhánh cô lập (nếu có)
+      for (const u of allUnits) {
+        if (!visitedInTree.has(u.id)) {
+          treeNodes.push(buildTreeNode(u, personToUnitMap, unitChildrenMap, visitedInTree));
+        }
+      }
+
+      const allGens = Array.from(new Set(all.map(p => p.generation))).sort((a, b) => b - a);
+      const maximumGen = allGens.length > 0 ? allGens[0] : 4;
+      const minimumGen = allGens.length > 0 ? allGens[allGens.length - 1] : 0;
+
+      const genRange: number[] = [];
+      for (let g = maximumGen; g >= minimumGen; g--) {
+        genRange.push(g);
+      }
+
+      setRootTreeNodes(treeNodes);
+      setMaxGen(maximumGen);
+      setGenerationList(genRange);
     } catch (e) {
       console.warn('Load tree export data error:', e);
     }
@@ -582,15 +688,154 @@ export function TreeExportScreen() {
             </React.Fragment>
           ))}
         </View>
+      </View>
+    );
+  };
 
-        {/* Downward stem descending from parents to children if they have descendants */}
-        {unit.childIds.length > 0 ? (
-          <View style={styles.parentStemWrapper}>
-            <View style={[styles.stemLine, { backgroundColor: themeColors.connector }]} />
-            <View style={[styles.stemKnot, { backgroundColor: themeColors.border }]}>
-              <Text style={styles.stemKnotText}>▼</Text>
+  // Helper render recursive FamilyTreeNode
+  // 1. Đôi vợ chồng có con: con ở đời sau ngay dưới bố mẹ, kết nối liền mạch
+  // 2. Người độc thân không có con (hoặc vợ chồng chưa có con): cây dừng lại ở người đấy
+  const renderTreeNode = (node: FamilyTreeNode) => {
+    const hasChildren = node.children.length > 0;
+
+    return (
+      <View key={node.id} style={[styles.treeNodeContainer, { width: node.subtreeWidth }]}>
+        {/* Family Unit Card (Cặp vợ chồng hoặc Người độc thân) được căn giữa trên subtreeWidth */}
+        <View style={[styles.treeNodeUnitRow, { width: node.subtreeWidth }]}>
+          {renderFamilyUnit(node.unit)}
+        </View>
+
+        {/* Nhánh đường nối và hàng con ở thế hệ kế tiếp */}
+        {hasChildren ? (
+          <View style={[styles.treeBranchesWrapper, { width: node.subtreeWidth }]}>
+            {/* Trường hợp chỉ có 1 con: 1 đường thả thẳng đứng từ giữa bố mẹ xuống con */}
+            {node.children.length === 1 ? (
+              <View style={[styles.singleChildDropContainer, { width: node.subtreeWidth }]}>
+                <View
+                  style={[
+                    styles.singleStemLine,
+                    {
+                      height: STEM_DROP,
+                      backgroundColor: themeColors.connector,
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.treeStemKnot,
+                    {
+                      backgroundColor: themeColors.border,
+                    },
+                  ]}>
+                  <Text style={styles.treeStemKnotText}>❖</Text>
+                </View>
+                <View
+                  style={[
+                    styles.singleStemLine,
+                    {
+                      height: STEM_BRANCH,
+                      backgroundColor: themeColors.connector,
+                    },
+                  ]}
+                />
+              </View>
+            ) : (
+              /* Trường hợp nhiều con: đường rẽ nhánh ngang và các nhánh thả xuống từng con */
+              <View
+                style={[
+                  styles.multiBranchesContainer,
+                  { width: node.subtreeWidth, height: STEM_DROP + STEM_BRANCH },
+                ]}>
+                {/* Đường thả dọc từ trung tâm bố mẹ xuống thanh ngang */}
+                <View
+                  style={[
+                    styles.parentStemLine,
+                    {
+                      left: node.subtreeWidth / 2 - 1,
+                      height: STEM_DROP,
+                      backgroundColor: themeColors.connector,
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.parentStemKnot,
+                    {
+                      left: node.subtreeWidth / 2 - 6,
+                      top: STEM_DROP - 5,
+                      backgroundColor: themeColors.border,
+                    },
+                  ]}>
+                  <Text style={styles.treeStemKnotText}>❖</Text>
+                </View>
+
+                {/* Tính toán tọa độ trung tâm từng người con để vẽ thanh ngang và đường nối */}
+                {(() => {
+                  const childrenW =
+                    node.children.reduce((sum, c) => sum + c.subtreeWidth, 0) +
+                    (node.children.length - 1) * SIBLING_GAP;
+                  const leftPadding = (node.subtreeWidth - childrenW) / 2;
+
+                  let runningX = leftPadding;
+                  const centers: number[] = [];
+                  node.children.forEach(c => {
+                    centers.push(runningX + c.subtreeWidth / 2);
+                    runningX += c.subtreeWidth + SIBLING_GAP;
+                  });
+
+                  const firstCenter = centers[0];
+                  const lastCenter = centers[centers.length - 1];
+                  const barWidth = lastCenter - firstCenter;
+
+                  return (
+                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                      {/* Thanh ngang nối các nhánh con */}
+                      <View
+                        style={[
+                          styles.horizontalCrossbar,
+                          {
+                            top: STEM_DROP,
+                            left: firstCenter,
+                            width: barWidth,
+                            backgroundColor: themeColors.connector,
+                          },
+                        ]}
+                      />
+
+                      {/* Đường dọc thả vào đỉnh thẻ của từng người con */}
+                      {centers.map((cx, idx) => (
+                        <View
+                          key={`drop_${idx}`}
+                          style={[
+                            styles.childDropStem,
+                            {
+                              top: STEM_DROP,
+                              left: cx - 1,
+                              height: STEM_BRANCH,
+                              backgroundColor: themeColors.connector,
+                            },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  );
+                })()}
+              </View>
+            )}
+
+            {/* Danh sách các nhánh con thế hệ sau nằm ngay dưới bố mẹ */}
+            <View style={[styles.childrenRow, { width: node.subtreeWidth }]}>
+              {node.children.map((childNode, cIdx) => (
+                <View
+                  key={childNode.id}
+                  style={[
+                    { width: childNode.subtreeWidth },
+                    cIdx > 0 && { marginLeft: SIBLING_GAP },
+                  ]}>
+                  {renderTreeNode(childNode)}
+                </View>
+              ))}
             </View>
-            <View style={[styles.stemLine, { backgroundColor: themeColors.connector }]} />
           </View>
         ) : null}
       </View>
@@ -762,112 +1007,100 @@ export function TreeExportScreen() {
                   </View>
                 </View>
 
-                {/* Generational Tiers Hierarchy */}
-                <View style={styles.tiersContainer}>
-                  {tiers.map((tier, tierIdx) => (
-                    <View key={tier.generation} style={styles.tierSection}>
-                      {/* Generational Banner */}
+                {/* Main Tree Flow & Right-Hand Generation Annotation Column */}
+                <View style={styles.posterBodyRow}>
+                  {/* The Seamless Tree Canvas Area */}
+                  <View style={styles.treeArea}>
+                    {rootTreeNodes.map((rootNode, rIdx) => (
                       <View
+                        key={rootNode.id}
                         style={[
-                          styles.tierHeaderBanner,
-                          { backgroundColor: themeColors.badgeBg, borderColor: themeColors.border },
+                          styles.rootTreeContainer,
+                          { width: rootNode.subtreeWidth },
+                          rIdx > 0 && { marginLeft: ROOT_GAP },
+                          { marginTop: Math.max(0, (maxGen - rootNode.generation) * ROW_HEIGHT) },
                         ]}>
-                        <Icon name="crown-outline" size={16} color={themeColors.title} />
-                        <Text style={[styles.tierLabel, { color: themeColors.title }]}>
-                          {tier.label}
-                        </Text>
+                        {renderTreeNode(rootNode)}
                       </View>
+                    ))}
+                  </View>
 
-                      {/* Branch Groups inside this generation */}
-                      <View style={styles.branchGroupsWrapper}>
-                        {tier.branchGroups.map(branchGroup => {
-                          const hasMultipleUnits = branchGroup.units.length > 1;
-
-                          return (
-                            <View key={branchGroup.branchKey} style={styles.branchContainer}>
-                              {/* Branch Parent Badge if applicable */}
-                              {branchGroup.parentLabel ? (
-                                <View style={styles.branchHeaderRow}>
-                                  <View style={[styles.branchTopStem, { backgroundColor: themeColors.connector }]} />
-                                  <View
-                                    style={[
-                                      styles.branchBadge,
-                                      { backgroundColor: themeColors.badgeBg, borderColor: themeColors.border },
-                                    ]}>
-                                    <Text style={[styles.branchBadgeText, { color: themeColors.badgeText }]}>
-                                      🌿 {branchGroup.parentLabel}
-                                    </Text>
-                                  </View>
-                                </View>
-                              ) : null}
-
-                              {/* Sibling branching crossbar & unit columns */}
-                              {hasMultipleUnits ? (
-                                <View style={styles.branchCrossbarRow}>
-                                  {branchGroup.units.map((unit, uIdx) => (
-                                    <View key={unit.id} style={styles.branchUnitCol}>
-                                      {/* Horizontal Crossbar across siblings */}
-                                      <View style={styles.crossbarLineRow}>
-                                        <View
-                                          style={[
-                                            styles.halfBar,
-                                            {
-                                              backgroundColor:
-                                                uIdx === 0 ? 'transparent' : themeColors.connector,
-                                            },
-                                          ]}
-                                        />
-                                        <View
-                                          style={[
-                                            styles.halfBar,
-                                            {
-                                              backgroundColor:
-                                                uIdx === branchGroup.units.length - 1
-                                                  ? 'transparent'
-                                                  : themeColors.connector,
-                                            },
-                                          ]}
-                                        />
-                                      </View>
-                                      {/* Vertical drop line down into child unit */}
-                                      <View
-                                        style={[
-                                          styles.dropLine,
-                                          { backgroundColor: themeColors.connector },
-                                        ]}
-                                      />
-                                      {renderFamilyUnit(unit)}
-                                    </View>
-                                  ))}
-                                </View>
-                              ) : (
-                                <View style={styles.singleUnitCol}>
-                                  {branchGroup.parentLabel ? (
-                                    <View
-                                      style={[
-                                        styles.dropLine,
-                                        { backgroundColor: themeColors.connector },
-                                      ]}
-                                    />
-                                  ) : null}
-                                  {renderFamilyUnit(branchGroup.units[0])}
-                                </View>
-                              )}
-                            </View>
-                          );
-                        })}
-                      </View>
-
-                      {/* Generational Trunk Link to next generation */}
-                      {tierIdx < tiers.length - 1 && (
-                        <View style={styles.connectorWrapper}>
-                          <View style={[styles.verticalLine, { backgroundColor: themeColors.connector }]} />
-                          <View style={[styles.connectorDot, { backgroundColor: themeColors.border }]} />
-                          <View style={[styles.verticalLine, { backgroundColor: themeColors.connector }]} />
-                        </View>
-                      )}
+                  {/* Right Side Generation Annotation Column (Chú giải thế hệ ở bên phải) */}
+                  <View style={[styles.rightLegendColumn, { borderLeftColor: themeColors.border }]}>
+                    {/* Header: CHÚ GIẢI THẾ HỆ */}
+                    <View
+                      style={[
+                        styles.legendColumnHeader,
+                        { backgroundColor: themeColors.badgeBg, borderColor: themeColors.border },
+                      ]}>
+                      <Icon name="bookmark-multiple-outline" size={15} color={themeColors.title} />
+                      <Text style={[styles.legendColumnTitle, { color: themeColors.title }]}>
+                        CHÚ GIẢI THẾ HỆ
+                      </Text>
                     </View>
-                  ))}
+
+                    {/* Generation Slots aligned with generation rows */}
+                    <View style={styles.legendSlotsContainer}>
+                      {generationList.map((genNum, idx) => {
+                        const meta = getGenerationMeta(genNum);
+
+                        return (
+                          <View key={genNum} style={[styles.legendSlot, { height: ROW_HEIGHT }]}>
+                            {/* Generational knot indicator pointing towards tree row */}
+                            <View
+                              style={[
+                                styles.legendKnot,
+                                {
+                                  backgroundColor: themeColors.badgeBg,
+                                  borderColor: themeColors.border,
+                                },
+                              ]}>
+                              <Text style={[styles.legendKnotText, { color: themeColors.title }]}>
+                                {meta.romanNumeral}
+                              </Text>
+                            </View>
+
+                            {/* The Legend Card for this Generation */}
+                            <View
+                              style={[
+                                styles.legendCard,
+                                {
+                                  backgroundColor: themeColors.cardBg,
+                                  borderColor: themeColors.border,
+                                },
+                              ]}>
+                              <View style={styles.legendCardHeader}>
+                                <View
+                                  style={[
+                                    styles.legendOrderPill,
+                                    {
+                                      backgroundColor: themeColors.badgeBg,
+                                      borderColor: themeColors.border,
+                                    },
+                                  ]}>
+                                  <Text style={[styles.legendOrderText, { color: themeColors.title }]}>
+                                    {meta.orderText}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              <Text
+                                style={[styles.legendRankTitle, { color: themeColors.title }]}
+                                numberOfLines={2}>
+                                {meta.rankTitle}
+                              </Text>
+
+                              <Text
+                                style={[styles.legendDescription, { color: themeColors.subtitle }]}
+                                numberOfLines={2}>
+                                {meta.description}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
                 </View>
 
                 {/* Poster Footer Stamp */}
@@ -1089,88 +1322,160 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     marginBottom: spacing.sm,
   },
-  tiersContainer: {
-    gap: spacing.xl,
-    alignItems: 'center',
+  posterBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
     width: '100%',
+    marginTop: spacing.md,
   },
-  tierSection: {
+  treeArea: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingTop: 48,
+  },
+  rootTreeContainer: {
     alignItems: 'center',
-    width: '100%',
-    marginVertical: spacing.xs,
   },
-  tierHeaderBanner: {
+  treeNodeContainer: {
+    alignItems: 'center',
+  },
+  treeNodeUnitRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  treeBranchesWrapper: {
+    alignItems: 'center',
+  },
+  singleChildDropContainer: {
+    alignItems: 'center',
+    height: 50,
+  },
+  singleStemLine: {
+    width: 2,
+  },
+  multiBranchesContainer: {
+    position: 'relative',
+    height: 50,
+  },
+  parentStemLine: {
+    position: 'absolute',
+    top: 0,
+    width: 2,
+  },
+  parentStemKnot: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  horizontalCrossbar: {
+    position: 'absolute',
+    height: 2,
+  },
+  childDropStem: {
+    position: 'absolute',
+    width: 2,
+  },
+  treeStemKnot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 1,
+  },
+  treeStemKnotText: {
+    fontSize: 7,
+    color: '#FFF',
+    fontWeight: '900',
+  },
+  childrenRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  rightLegendColumn: {
+    width: 240,
+    paddingLeft: 28,
+    borderLeftWidth: 2,
+    marginLeft: 32,
+  },
+  legendColumnHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 6,
-    borderRadius: radius.full,
+    height: 36,
+    marginBottom: 12,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    marginBottom: spacing.md,
+    paddingHorizontal: 8,
   },
-  tierLabel: {
+  legendColumnTitle: {
     fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
-  branchGroupsWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  legendSlotsContainer: {
+    flexDirection: 'column',
+  },
+  legendSlot: {
+    position: 'relative',
+    justifyContent: 'flex-start',
+  },
+  legendKnot: {
+    position: 'absolute',
+    left: -39,
+    top: 14,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 28,
-    flexWrap: 'nowrap',
+    zIndex: 3,
   },
-  branchContainer: {
-    alignItems: 'center',
-    marginVertical: 4,
-    paddingHorizontal: 4,
+  legendKnotText: {
+    fontSize: 8,
+    fontWeight: '900',
   },
-  branchHeaderRow: {
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  branchTopStem: {
-    width: 2,
-    height: 12,
-    marginBottom: 2,
-  },
-  branchBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: radius.full,
+  legendCard: {
     borderWidth: 1,
-    marginBottom: 4,
-  },
-  branchBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  branchCrossbarRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    borderRadius: radius.md,
+    padding: 12,
+    height: 180,
     justifyContent: 'center',
-    gap: 16,
-    flexWrap: 'nowrap',
   },
-  branchUnitCol: {
-    alignItems: 'center',
-  },
-  singleUnitCol: {
-    alignItems: 'center',
-  },
-  crossbarLineRow: {
+  legendCardHeader: {
     flexDirection: 'row',
-    width: '100%',
-    height: 2,
+    alignItems: 'center',
+    marginBottom: 6,
   },
-  halfBar: {
-    flex: 1,
-    height: 2,
+  legendOrderPill: {
+    borderWidth: 1,
+    borderRadius: radius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
-  dropLine: {
-    width: 2,
-    height: 14,
+  legendOrderText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  legendRankTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  legendDescription: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontStyle: 'italic',
   },
   familyUnitWrapper: {
     alignItems: 'center',
@@ -1206,34 +1511,15 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: '700',
   },
-  parentStemWrapper: {
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  stemLine: {
-    width: 2,
-    height: 10,
-  },
-  stemKnot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stemKnotText: {
-    fontSize: 7,
-    color: '#FFF',
-    fontWeight: '900',
-  },
   memberCard: {
     width: 132,
+    height: 180,
     padding: 8,
     borderRadius: radius.md,
     borderWidth: 1,
     alignItems: 'center',
     position: 'relative',
-    minHeight: 175,
+    justifyContent: 'center',
   },
   avatarWrap: {
     marginTop: 6,
@@ -1283,20 +1569,6 @@ const styles = StyleSheet.create({
   memberBirth: {
     fontSize: 10,
     marginTop: 4,
-  },
-  connectorWrapper: {
-    alignItems: 'center',
-    marginVertical: spacing.md,
-  },
-  verticalLine: {
-    width: 2,
-    height: 18,
-  },
-  connectorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginVertical: 2,
   },
   posterFooter: {
     alignItems: 'center',
