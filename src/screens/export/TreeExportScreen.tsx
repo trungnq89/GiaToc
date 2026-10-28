@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -72,17 +72,62 @@ export function TreeExportScreen() {
   const [lastExportedUri, setLastExportedUri] = useState<string | null>(null);
 
   const { width: windowWidth } = useWindowDimensions();
-  const [zoomLevel, setZoomLevel] = useState<number>(0.85);
+  const [zoomLevel, setZoomLevel] = useState<number>(0.65);
   const [canvasHeight, setCanvasHeight] = useState<number>(2600);
 
   const canvasRef = useRef<any>(null);
+
+  // Dynamic Canvas Width calculation based on the widest generation tier
+  // Đảm bảo mỗi thế hệ hiển thị trọn vẹn trên 1 tầng ngang, chiều rộng ảnh tự co giãn theo thế hệ đông nhất
+  const canvasWidth = useMemo(() => {
+    if (tiers.length === 0) return 1480;
+
+    const getUnitWidth = (unit: FamilyUnit) => {
+      // Primary member: 132
+      let w = 132;
+      // Spouse: +54 connector + 132 card
+      if (unit.spouse) w += 54 + 132;
+      // Extra spouses: each +54 connector + 132 card
+      if (unit.extraSpouses && unit.extraSpouses.length > 0) {
+        w += unit.extraSpouses.length * (54 + 132);
+      }
+      return w + 16; // 8px margin each side
+    };
+
+    const getBranchWidth = (bg: FamilyBranchGroup) => {
+      const unitsW = bg.units.reduce((sum, u) => sum + getUnitWidth(u), 0);
+      const gapW = Math.max(0, bg.units.length - 1) * 16; // 16px gap between siblings
+      return unitsW + gapW + 24; // 24px branch padding
+    };
+
+    const getTierWidth = (tier: GenerationTier) => {
+      const branchesW = tier.branchGroups.reduce((sum, bg) => sum + getBranchWidth(bg), 0);
+      const gapW = Math.max(0, tier.branchGroups.length - 1) * 32; // 32px gap between branches
+      return branchesW + gapW;
+    };
+
+    const maxTierW = Math.max(...tiers.map(getTierWidth), 1200);
+    // Add canvas padding (inner border padding 24*2 + canvas padding 16*2 + margins = ~200px)
+    return Math.max(1400, Math.round(maxTierW + 200));
+  }, [tiers]);
+
+  const fitZoom = useMemo(() => {
+    if (!canvasWidth || !windowWidth) return 0.35;
+    return Math.min(0.85, Math.max(0.12, Number(((windowWidth - 28) / canvasWidth).toFixed(2))));
+  }, [canvasWidth, windowWidth]);
+
+  useEffect(() => {
+    if (fitZoom > 0) {
+      setZoomLevel(fitZoom);
+    }
+  }, [fitZoom]);
 
   const handleZoomIn = () => {
     setZoomLevel(prev => Math.min(1.8, Math.round((prev + 0.15) * 100) / 100));
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(0.3, Math.round((prev - 0.15) * 100) / 100));
+    setZoomLevel(prev => Math.max(0.12, Math.round((prev - 0.15) * 100) / 100));
   };
 
   const handleResetZoom = () => {
@@ -90,7 +135,7 @@ export function TreeExportScreen() {
   };
 
   const handleToggleFit = () => {
-    setZoomLevel(prev => (prev > 0.5 ? 0.38 : 1.0));
+    setZoomLevel(prev => (Math.abs(prev - fitZoom) < 0.05 ? 1.0 : fitZoom));
   };
 
   const loadTreeData = useCallback(async () => {
@@ -612,24 +657,24 @@ export function TreeExportScreen() {
 
           {/* Quick Zoom Presets */}
           <Chip
-            label="🔍 Toàn cảnh (38%)"
-            selected={zoomLevel <= 0.45}
-            onPress={() => setZoomLevel(0.38)}
+            label={`🔍 Toàn cảnh (${Math.round(fitZoom * 100)}%)`}
+            selected={Math.abs(zoomLevel - fitZoom) < 0.04}
+            onPress={() => setZoomLevel(fitZoom)}
           />
           <Chip
-            label="🔍 70%"
-            selected={zoomLevel > 0.45 && zoomLevel <= 0.8}
-            onPress={() => setZoomLevel(0.7)}
+            label="🔍 50%"
+            selected={Math.abs(zoomLevel - 0.5) < 0.04}
+            onPress={() => setZoomLevel(0.5)}
           />
           <Chip
             label="🔍 Chuẩn (100%)"
-            selected={zoomLevel > 0.8 && zoomLevel <= 1.15}
+            selected={Math.abs(zoomLevel - 1.0) < 0.04}
             onPress={() => setZoomLevel(1.0)}
           />
           <Chip
-            label="🔍 Phóng to (140%)"
-            selected={zoomLevel > 1.15}
-            onPress={() => setZoomLevel(1.4)}
+            label="🔍 Phóng to (150%)"
+            selected={Math.abs(zoomLevel - 1.5) < 0.04}
+            onPress={() => setZoomLevel(1.5)}
           />
         </ScrollView>
       </View>
@@ -641,7 +686,7 @@ export function TreeExportScreen() {
           showsHorizontalScrollIndicator={true}
           contentContainerStyle={[
             styles.horizontalScrollContent,
-            { minWidth: Math.max(windowWidth, Math.round(1480 * zoomLevel + 32)) },
+            { minWidth: Math.max(windowWidth, Math.round(canvasWidth * zoomLevel + 32)) },
           ]}>
           <ScrollView
             showsVerticalScrollIndicator={true}
@@ -652,7 +697,7 @@ export function TreeExportScreen() {
             {/* Scaled Canvas Container */}
             <View
               style={{
-                width: Math.round(1480 * zoomLevel),
+                width: Math.round(canvasWidth * zoomLevel),
                 height: Math.round(canvasHeight * zoomLevel),
                 alignItems: 'flex-start',
                 justifyContent: 'flex-start',
@@ -670,6 +715,7 @@ export function TreeExportScreen() {
                 style={[
                   styles.posterCanvas,
                   {
+                    width: canvasWidth,
                     backgroundColor: themeColors.bg,
                     borderColor: themeColors.border,
                     transform: [{ scale: zoomLevel }],
@@ -680,22 +726,39 @@ export function TreeExportScreen() {
                 <View style={[styles.innerBorder, { borderColor: themeColors.border }]}>
                 {/* Traditional Vietnamese Hoành Phi Header */}
                 <View style={styles.posterHeader}>
-                  <View style={styles.ornamentRow}>
-                    <Text style={[styles.ornamentText, { color: themeColors.border }]}>
-                      ❖ ======================== ❖ ======================== ❖
-                    </Text>
+                  <View style={styles.headerDecorativeLineWrap}>
+                    <View style={[styles.headerLine, { backgroundColor: themeColors.border }]} />
+                    <View
+                      style={[
+                        styles.headerEmblem,
+                        { borderColor: themeColors.border, backgroundColor: themeColors.badgeBg },
+                      ]}>
+                      <Text style={[styles.headerEmblemIcon, { color: themeColors.title }]}>❖</Text>
+                      <Text style={[styles.headerEmblemText, { color: themeColors.title }]}>
+                        {selectedBranch === 'noi'
+                          ? 'CÂY GIA PHẢ BÊN NỘI'
+                          : selectedBranch === 'ngoai'
+                          ? 'CÂY GIA PHẢ BÊN NGOẠI'
+                          : selectedBranch === 'vo_chong'
+                          ? 'CÂY GIA PHẢ BÊN VỢ/CHỒNG'
+                          : 'CÂY GIA PHẢ TOÀN GIA TỘC'}
+                      </Text>
+                      <Text style={[styles.headerEmblemIcon, { color: themeColors.title }]}>❖</Text>
+                    </View>
+                    <View style={[styles.headerLine, { backgroundColor: themeColors.border }]} />
                   </View>
+
                   <Text style={[styles.posterTitle, { color: themeColors.title }]}>
-                    CÂY GIA PHẢ GIA TỘC
+                    BẢN ĐỒ GIA PHẢ TRỰC HỆ
                   </Text>
                   <Text style={[styles.posterSubtitle, { color: themeColors.subtitle }]}>
                     "Cây có cội mới trổ cành xanh ngọn • Nước có nguồn mới tỏa nhánh muôn sông"
                   </Text>
 
-                  <View style={styles.ornamentRow}>
-                    <Text style={[styles.ornamentText, { color: themeColors.border }]}>
-                      ───────────────────────────────────────────────────────
-                    </Text>
+                  <View style={styles.headerDividerStrip}>
+                    <View style={[styles.headerLine, { backgroundColor: themeColors.border }]} />
+                    <Text style={[styles.ornamentSymbol, { color: themeColors.border }]}>♦ ❖ ♦</Text>
+                    <View style={[styles.headerLine, { backgroundColor: themeColors.border }]} />
                   </View>
                 </View>
 
@@ -809,13 +872,17 @@ export function TreeExportScreen() {
 
                 {/* Poster Footer Stamp */}
                 <View style={styles.posterFooter}>
-                  <View style={[styles.sealBox, { borderColor: themeColors.border }]}>
-                    <Text style={[styles.sealText, { color: themeColors.title }]}>
-                      ❖ GIA TỘC TRƯỜNG TỒN • PHÚC ĐỨC LƯU TRUYỀN ❖
-                    </Text>
-                    <Text style={[styles.sealSub, { color: themeColors.subtitle }]}>
-                      Ứng Dụng Sổ Họ Hàng Gia Tộc • Lưu Giữ Bản Sắc Cội Nguồn
-                    </Text>
+                  <View style={styles.footerDecorativeLineWrap}>
+                    <View style={[styles.headerLine, { backgroundColor: themeColors.border }]} />
+                    <View style={[styles.sealBox, { borderColor: themeColors.border, backgroundColor: themeColors.badgeBg }]}>
+                      <Text style={[styles.sealText, { color: themeColors.title }]}>
+                        ❖ GIA TỘC TRƯỜNG TỒN • PHÚC ĐỨC LƯU TRUYỀN ❖
+                      </Text>
+                      <Text style={[styles.sealSub, { color: themeColors.subtitle }]}>
+                        Ứng Dụng Sổ Họ Hàng Gia Tộc • Lưu Giữ Bản Sắc Cội Nguồn
+                      </Text>
+                    </View>
+                    <View style={[styles.headerLine, { backgroundColor: themeColors.border }]} />
                   </View>
 
                   {/* Export Date anchored to bottom right */}
@@ -948,27 +1015,63 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: radius.lg,
     borderWidth: 2,
-    width: 1480,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
+    alignItems: 'center',
   },
   innerBorder: {
     borderWidth: 1.5,
     borderStyle: 'solid',
     padding: 24,
     borderRadius: radius.md,
+    width: '100%',
+    alignItems: 'center',
   },
   posterHeader: {
     alignItems: 'center',
     marginBottom: spacing.lg,
+    width: '100%',
   },
-  ornamentRow: {
+  headerDecorativeLineWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
     marginBottom: spacing.xs,
+    gap: spacing.sm,
   },
-  ornamentText: {
+  headerLine: {
+    flex: 1,
+    height: 1.5,
+    opacity: 0.85,
+  },
+  headerEmblem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    borderWidth: 1,
+  },
+  headerEmblemIcon: {
+    fontSize: 12,
+  },
+  headerEmblemText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  headerDividerStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '80%',
+    marginTop: spacing.xs,
+    gap: spacing.sm,
+  },
+  ornamentSymbol: {
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 2,
@@ -986,26 +1089,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     marginBottom: spacing.sm,
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-    marginTop: spacing.xs,
-  },
-  metaText: {
-    fontSize: 12,
-  },
-  metaDot: {
-    fontSize: 12,
-  },
   tiersContainer: {
     gap: spacing.xl,
+    alignItems: 'center',
+    width: '100%',
   },
   tierSection: {
     alignItems: 'center',
     width: '100%',
+    marginVertical: spacing.xs,
   },
   tierHeaderBanner: {
     flexDirection: 'row',
@@ -1023,14 +1115,16 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   branchGroupsWrapper: {
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    gap: spacing.lg,
-    width: '100%',
+    gap: 28,
+    flexWrap: 'nowrap',
   },
   branchContainer: {
     alignItems: 'center',
     marginVertical: 4,
+    paddingHorizontal: 4,
   },
   branchHeaderRow: {
     alignItems: 'center',
@@ -1056,7 +1150,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'center',
-    gap: 12,
+    gap: 16,
+    flexWrap: 'nowrap',
   },
   branchUnitCol: {
     alignItems: 'center',
@@ -1206,6 +1301,13 @@ const styles = StyleSheet.create({
   posterFooter: {
     alignItems: 'center',
     marginTop: spacing.xl,
+    width: '100%',
+  },
+  footerDecorativeLineWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    gap: spacing.sm,
   },
   sealBox: {
     borderWidth: 2,
