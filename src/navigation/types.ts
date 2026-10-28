@@ -22,4 +22,7 @@ export type RootStackParamList = {
     eventId?: string;
     defaultPersonId?: string;
   };
+  TreeExport: {
+    defaultBranch?: FamilyBranch;
+  };
 };

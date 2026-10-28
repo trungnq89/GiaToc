@@ -62,6 +62,7 @@ function mapSummaryRow(row: PersonRow): PersonSummary {
     customRelationToMe: row.custom_relation_to_me ?? undefined,
     inferredRelationToMe: row.inferred_relation_to_me ?? undefined,
     phone: row.phone ?? undefined,
+    birthYear: row.birth_year ?? undefined,
     isDeceased: row.is_deceased === 1,
     generation: row.generation ?? 0,
   };
@@ -88,7 +89,7 @@ export async function listPersons(options?: {
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const sql = `
     SELECT id, name, nickname, gender, avatar_uri, branch, custom_relation_to_me, 
-           inferred_relation_to_me, phone, is_deceased, generation
+           inferred_relation_to_me, birth_year, phone, is_deceased, generation
     FROM persons
     ${whereClause}
     ORDER BY generation DESC, name ASC;

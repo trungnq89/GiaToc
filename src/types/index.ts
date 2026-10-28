@@ -54,6 +54,7 @@ export interface PersonSummary {
   branch: FamilyBranch;
   customRelationToMe?: string;
   inferredRelationToMe?: string;
+  birthYear?: number;
   phone?: string;
   isDeceased: boolean;
   generation: number;

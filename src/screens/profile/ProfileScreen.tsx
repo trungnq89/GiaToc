@@ -8,7 +8,9 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../navigation/types';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useSessionStore } from '../../store/sessionStore';
 import { saveUserProfile } from '../../db/repositories/userRepository';
@@ -21,7 +23,10 @@ import { persistAvatarImage } from '../../utils/avatarStorage';
 import { Gender } from '../../types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export function ProfileScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const user = useSessionStore(s => s.user);
   const updateProfile = useSessionStore(s => s.updateProfile);
   const resetAllData = useSessionStore(s => s.resetAllData);
@@ -246,6 +251,22 @@ export function ProfileScreen() {
       {/* Quick Tools */}
       <View style={styles.card}>
         <Text style={[typography.subtitle1, styles.cardTitle]}>Tiện Ích & Dữ Liệu</Text>
+
+        <TouchableOpacity
+          style={styles.settingRow}
+          onPress={() => navigation.navigate('TreeExport', {})}
+          activeOpacity={0.7}>
+          <View style={[styles.settingIcon, { backgroundColor: colors.primarySoft }]}>
+            <Icon name="file-image-outline" size={20} color={colors.primary} />
+          </View>
+          <View style={styles.settingText}>
+            <Text style={[typography.subtitle2, styles.settingTitle]}>Xuất cây gia phả (Dạng ảnh)</Text>
+            <Text style={[typography.caption, styles.settingDesc]}>
+              Tạo poster cây gia tộc nghệ thuật để lưu vào máy hoặc chia sẻ
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={20} color={colors.border} />
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.settingRow} onPress={handleSeedSampleData} activeOpacity={0.7}>
           <View style={[styles.settingIcon, { backgroundColor: colors.primarySoft }]}>

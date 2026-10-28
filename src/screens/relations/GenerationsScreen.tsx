@@ -118,6 +118,22 @@ export function GenerationsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Top action header */}
+      <View style={styles.topActionHeader}>
+        <View>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>Phả Hệ Gia Tộc</Text>
+          <Text style={[typography.h3, { color: colors.text }]}>Sơ Đồ 6 Thế Hệ</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.exportBtn}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('TreeExport', { defaultBranch: activeBranch })}>
+          <Icon name="file-image-outline" size={18} color="#FFF" />
+          <Text style={[typography.button, styles.exportBtnText]}>Xuất ảnh</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Branch selector */}
       <View style={styles.branchHeader}>
         <Text style={[typography.subtitle2, styles.branchTitle]}>Chọn Nhánh Họ Hàng:</Text>
@@ -331,5 +347,27 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 10,
     fontWeight: '700',
+  },
+  topActionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.card,
+  },
+  exportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+  },
+  exportBtnText: {
+    color: '#FFF',
+    fontSize: 13,
   },
 });

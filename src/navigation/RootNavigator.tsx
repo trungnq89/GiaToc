@@ -7,6 +7,7 @@ import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 import { PersonDetailScreen } from '../screens/relations/PersonDetailScreen';
 import { PersonFormScreen } from '../screens/relations/PersonFormScreen';
 import { EventFormScreen } from '../screens/events/EventFormScreen';
+import { TreeExportScreen } from '../screens/export/TreeExportScreen';
 import { useSessionStore } from '../store/sessionStore';
 import { colors } from '../theme';
 
@@ -42,6 +43,10 @@ export function RootNavigator() {
             name="EventForm"
             component={EventFormScreen}
             options={{ presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="TreeExport"
+            component={TreeExportScreen}
           />
         </>
       )}
