@@ -1,0 +1,14 @@
+pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+plugins { id("com.facebook.react.settings") }
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+rootProject.name = 'GiaToc'
+include ':app'
+includeBuild('../node_modules/@react-native/gradle-plugin')
+
+gradle.beforeProject { p ->
+    p.afterEvaluate {
+        if (p != p.rootProject && p.hasProperty("android") && p.android.hasProperty("compileSdkVersion")) {
+            p.android.compileSdkVersion = p.rootProject.ext.compileSdkVersion
+        }
+    }
+}

@@ -1,0 +1,15 @@
+{
+  "appName": "GiaToc",
+  "searchPlaceholder": "Search by name, relation (Uncle, Aunt...)",
+  "all": "All",
+  "noi": "Paternal",
+  "ngoai": "Maternal",
+  "voChong": "In-laws",
+  "khac": "Other",
+  "save": "Save",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "edit": "Edit",
+  "confirm": "Confirm",
+  "back": "Back"
+}
