@@ -1,6 +1,7 @@
 import uuid from 'react-native-uuid';
 import { Person, PersonSummary, Gender, FamilyBranch } from '../../types';
 import { execute, query, queryOne } from '../database';
+import { matchesVietnameseSearch } from '../../utils/vietnameseSearch';
 
 interface PersonRow {
   id: string;
@@ -84,14 +85,6 @@ export async function listPersons(options?: {
     params.push(options.generation);
   }
 
-  if (options?.searchQuery && options.searchQuery.trim().length > 0) {
-    const term = `%${options.searchQuery.trim()}%`;
-    conditions.push(
-      '(name LIKE ? OR nickname LIKE ? OR custom_relation_to_me LIKE ? OR inferred_relation_to_me LIKE ? OR phone LIKE ?)',
-    );
-    params.push(term, term, term, term, term);
-  }
-
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const sql = `
     SELECT id, name, nickname, gender, avatar_uri, branch, custom_relation_to_me, 
@@ -102,7 +95,21 @@ export async function listPersons(options?: {
   `;
 
   const rows = await query<PersonRow>(sql, params);
-  return rows.map(mapSummaryRow);
+  let list = rows.map(mapSummaryRow);
+
+  if (options?.searchQuery && options.searchQuery.trim().length > 0) {
+    const q = options.searchQuery.trim();
+    list = list.filter(
+      p =>
+        matchesVietnameseSearch(p.name, q) ||
+        matchesVietnameseSearch(p.nickname, q) ||
+        matchesVietnameseSearch(p.customRelationToMe, q) ||
+        matchesVietnameseSearch(p.inferredRelationToMe, q) ||
+        matchesVietnameseSearch(p.phone, q),
+    );
+  }
+
+  return list;
 }
 
 export async function getPersonById(id: string): Promise<Person | null> {

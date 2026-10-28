@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,13 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useSessionStore } from '../../store/sessionStore';
 import { saveUserProfile } from '../../db/repositories/userRepository';
-import { getFamilyStats, FamilyStats, createPerson } from '../../db/repositories/personRepository';
-import { linkRelatives } from '../../db/repositories/relationshipRepository';
+import { getFamilyStats, FamilyStats } from '../../db/repositories/personRepository';
 import { execute } from '../../db/database';
+import { seed6GenerationsFamily } from '../../db/seed6Generations';
 import { colors, radius, spacing, typography } from '../../theme';
 import { Avatar, AppButton, Icon, useToast } from '../../components';
 import { persistAvatarImage } from '../../utils/avatarStorage';
@@ -39,9 +40,11 @@ export function ProfileScreen() {
     deceased: 0,
   });
 
-  useEffect(() => {
-    getFamilyStats().then(setStats).catch(console.warn);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      getFamilyStats().then(setStats).catch(console.warn);
+    }, []),
+  );
 
   const handlePickAvatar = async () => {
     try {
@@ -88,131 +91,26 @@ export function ProfileScreen() {
 
   const handleSeedSampleData = () => {
     Alert.alert(
-      'Nạp dữ liệu mẫu?',
-      'Hệ thống sẽ thêm một gia phả mẫu (Ông bà nội ngoại, Bố mẹ, Bác Cả, Chú Ba, Dì Út, Anh chị em họ...) để bạn trải nghiệm ngay tính năng suy diễn và tìm kiếm.',
+      'Nạp gia phả 6 đời mẫu?',
+      'Hệ thống sẽ nạp dữ liệu một dòng họ lớn gồm 6 thế hệ (từ Cụ Khởi tổ Cao Tổ, Tằng Tổ, Ông Bà, Cha Chú, Thế hệ của Bạn, và 2 con nhỏ đời mới nhất) với đầy đủ ngày giỗ, liên kết gia tộc.',
       [
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Nạp mẫu ngay',
           onPress: async () => {
             try {
-              // 1. Ông nội
-              const ongNoi = await createPerson({
-                name: 'Nguyễn Văn An',
-                nickname: 'Cụ Trưởng',
-                gender: 'male',
-                branch: 'noi',
-                customRelationToMe: 'Ông nội',
-                inferredRelationToMe: 'Ông nội',
-                generation: 2,
-                isDeceased: true,
-                deathDateLunar: '15/07 Âm lịch',
-                address: 'Hà Tây cũ',
-              });
-
-              // 2. Bà nội
-              const baNoi = await createPerson({
-                name: 'Trần Thị Mùi',
-                gender: 'female',
-                branch: 'noi',
-                customRelationToMe: 'Bà nội',
-                inferredRelationToMe: 'Bà nội',
-                generation: 2,
-                isDeceased: false,
-                birthYear: 1940,
-                address: 'Hà Nội',
-              });
-              await linkRelatives(ongNoi.id, baNoi.id, 'spouse');
-
-              // 3. Bố
-              const bo = await createPerson({
-                name: 'Nguyễn Văn Bình',
-                nickname: 'Bố Bình',
-                gender: 'male',
-                branch: 'noi',
-                customRelationToMe: 'Bố ruột',
-                inferredRelationToMe: 'Bố',
-                generation: 1,
-                isDeceased: false,
-                birthYear: 1968,
-                phone: '0912345678',
-                address: 'Cầu Giấy, Hà Nội',
-              });
-              await linkRelatives(ongNoi.id, bo.id, 'parent');
-              await linkRelatives(baNoi.id, bo.id, 'parent');
-
-              // 4. Bác Cả (Anh trai của Bố)
-              const bacCa = await createPerson({
-                name: 'Nguyễn Văn Cường',
-                nickname: 'Bác Cả',
-                gender: 'male',
-                branch: 'noi',
-                customRelationToMe: 'Bác Cả',
-                inferredRelationToMe: 'Bác trai (Anh của Bố)',
-                generation: 1,
-                isDeceased: false,
-                birthYear: 1962,
-                phone: '0988776655',
-                notes: 'Trưởng tộc họ Nguyễn, am hiểu gia phả.',
-              });
-              await linkRelatives(ongNoi.id, bacCa.id, 'parent');
-              await linkRelatives(bo.id, bacCa.id, 'sibling');
-
-              // 5. Mẹ
-              const me = await createPerson({
-                name: 'Lê Thị Dung',
-                gender: 'female',
-                branch: 'ngoai',
-                customRelationToMe: 'Mẹ ruột',
-                inferredRelationToMe: 'Mẹ',
-                generation: 1,
-                isDeceased: false,
-                birthYear: 1970,
-                phone: '0903456789',
-              });
-              await linkRelatives(bo.id, me.id, 'spouse');
-
-              // 6. Dì Út (Em gái của Mẹ)
-              const diUt = await createPerson({
-                name: 'Lê Thị Mai',
-                nickname: 'Dì Út',
-                gender: 'female',
-                branch: 'ngoai',
-                customRelationToMe: 'Dì Út',
-                inferredRelationToMe: 'Dì (Em gái của Mẹ)',
-                generation: 1,
-                isDeceased: false,
-                birthYear: 1978,
-                address: 'Đà Nẵng',
-              });
-              await linkRelatives(me.id, diUt.id, 'sibling');
-
-              // 7. Anh họ (Con của Bác Cả)
-              const anhHo = await createPerson({
-                name: 'Nguyễn Quang Minh',
-                nickname: 'Minh Xoăn',
-                gender: 'male',
-                branch: 'noi',
-                customRelationToMe: 'Anh họ',
-                inferredRelationToMe: 'Anh họ (Con của Bác Cả)',
-                generation: 0,
-                isDeceased: false,
-                birthYear: 1990,
-                phone: '0977112233',
-                notes: 'Làm kỹ sư công nghệ, hay về quê dịp Tết.',
-              });
-              await linkRelatives(bacCa.id, anhHo.id, 'parent');
-
+              const res = await seed6GenerationsFamily();
               const newStats = await getFamilyStats();
               setStats(newStats);
-              toast.show('Đã nạp 7 người thân mẫu thành công!', 'success');
+              toast.show(`Đã nạp thành công gia phả 6 đời (${res.totalCount} người thân)!`, 'success');
             } catch (err) {
               console.error(err);
               Alert.alert('Lỗi', 'Không thể nạp dữ liệu mẫu.');
             }
           },
         },
-      ]);
+      ],
+    );
   };
 
   const handleResetData = () => {
@@ -354,9 +252,9 @@ export function ProfileScreen() {
             <Icon name="database-plus-outline" size={20} color={colors.primary} />
           </View>
           <View style={styles.settingText}>
-            <Text style={[typography.subtitle2, styles.settingTitle]}>Nạp dữ liệu họ hàng mẫu</Text>
+            <Text style={[typography.subtitle2, styles.settingTitle]}>Nạp gia phả 6 đời mẫu</Text>
             <Text style={[typography.caption, styles.settingDesc]}>
-              Tạo nhanh mẫu gia phả 3 thế hệ để trải nghiệm thử
+              Quy mô 6 thế hệ (các đời trước 4-7 con, đời gần nhất 2 con)
             </Text>
           </View>
           <Icon name="chevron-right" size={20} color={colors.border} />

@@ -7,7 +7,7 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { listPersons } from '../../db/repositories/personRepository';
@@ -36,50 +36,79 @@ export function GenerationsScreen() {
     try {
       const all = await listPersons({ branch: activeBranch });
 
-      // Group by generation
-      const grandParents = all.filter(p => p.generation >= 2);
+      // Group by 6 generations
+      const caoToTier = all.filter(p => p.generation >= 4);
+      const tangToTier = all.filter(p => p.generation === 3);
+      const ongBaTier = all.filter(p => p.generation === 2);
       const parentsTier = all.filter(p => p.generation === 1);
       const myTier = all.filter(p => p.generation === 0);
       const childrenTier = all.filter(p => p.generation <= -1);
 
-      setSections([
-        {
-          title: 'Bậc Ông Bà / Tiền Bối',
-          generation: 2,
-          subtitle: 'Ông, Bà, Cụ...',
+      const sectionList: GenerationSection[] = [];
+
+      // Chỉ hiện tier nếu có người hoặc là các tier chính
+      if (caoToTier.length > 0) {
+        sectionList.push({
+          title: 'Đời 1: Bậc Cao Tổ / Cụ Kỵ (+4)',
+          generation: 4,
+          subtitle: 'Cụ Khởi tổ, Cao tổ phụ, Cao tổ mẫu...',
+          icon: 'shield-crown-outline',
+          persons: caoToTier,
+        });
+      }
+
+      if (tangToTier.length > 0) {
+        sectionList.push({
+          title: 'Đời 2: Bậc Cụ Cố / Tằng Tổ (+3)',
+          generation: 3,
+          subtitle: 'Cụ Cố, Cụ Bác, Cụ Chú, Cụ Cô...',
           icon: 'crown-outline',
-          persons: grandParents,
+          persons: tangToTier,
+        });
+      }
+
+      sectionList.push(
+        {
+          title: 'Đời 3: Bậc Ông Bà / Tiền Bối (+2)',
+          generation: 2,
+          subtitle: 'Ông, Bà, Ông Bác, Ông Chú, Bà Cô...',
+          icon: 'account-supervisor-circle',
+          persons: ongBaTier,
         },
         {
-          title: 'Bậc Cha Chú / Cô Dì Bác',
+          title: 'Đời 4: Bậc Cha Chú / Cô Dì Bác (+1)',
           generation: 1,
           subtitle: 'Bố, Mẹ, Bác, Chú, Cô, Cậu, Dì...',
-          icon: 'account-supervisor-circle',
+          icon: 'account-supervisor',
           persons: parentsTier,
         },
         {
-          title: 'Thế Hệ Của Tôi',
+          title: 'Đời 5: Thế Hệ Của Tôi (0)',
           generation: 0,
           subtitle: 'Tôi, Vợ/Chồng, Anh Chị Em ruột & họ...',
           icon: 'account-multiple-outline',
           persons: myTier,
         },
         {
-          title: 'Bậc Con Cháu Đời Sau',
+          title: 'Đời 6: Bậc Con Cháu Đời Mới (-1)',
           generation: -1,
-          subtitle: 'Con, Cháu, Chắt...',
+          subtitle: 'Con trai, Con gái, Cháu...',
           icon: 'human-child',
           persons: childrenTier,
         },
-      ]);
+      );
+
+      setSections(sectionList);
     } catch (e) {
       console.warn('Load generations error:', e);
     }
   }, [activeBranch]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData]),
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);

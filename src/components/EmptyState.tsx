@@ -10,6 +10,8 @@ export interface EmptyStateProps {
   description?: string;
   actionTitle?: string;
   onAction?: () => void;
+  secondaryActionTitle?: string;
+  onSecondaryAction?: () => void;
 }
 
 export function EmptyState({
@@ -18,6 +20,8 @@ export function EmptyState({
   description,
   actionTitle,
   onAction,
+  secondaryActionTitle,
+  onSecondaryAction,
 }: EmptyStateProps) {
   return (
     <View style={styles.container}>
@@ -34,6 +38,15 @@ export function EmptyState({
           onPress={onAction}
           icon="plus"
           style={styles.actionButton}
+        />
+      )}
+      {secondaryActionTitle && onSecondaryAction && (
+        <AppButton
+          title={secondaryActionTitle}
+          onPress={onSecondaryAction}
+          variant="secondary"
+          icon="database-sync"
+          style={styles.secondaryButton}
         />
       )}
     </View>
@@ -68,6 +81,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   actionButton: {
+    minWidth: 160,
+  },
+  secondaryButton: {
+    marginTop: spacing.sm,
     minWidth: 160,
   },
 });

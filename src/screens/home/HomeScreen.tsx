@@ -9,20 +9,22 @@ import {
   Linking,
   RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { useSessionStore } from '../../store/sessionStore';
 import { listPersons } from '../../db/repositories/personRepository';
+import { seed6GenerationsFamily } from '../../db/seed6Generations';
 import { PersonSummary, FamilyBranch } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
-import { Avatar, Chip, EmptyState, Icon } from '../../components';
+import { Avatar, Chip, EmptyState, Icon, useToast } from '../../components';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const toast = useToast();
   const user = useSessionStore(s => s.user);
   const selectedBranch = useSessionStore(s => s.selectedBranch);
   const setSelectedBranch = useSessionStore(s => s.setSelectedBranch);
@@ -43,9 +45,11 @@ export function HomeScreen() {
     }
   }, [selectedBranch, searchQuery]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData]),
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -56,6 +60,20 @@ export function HomeScreen() {
   const handleCall = (phone?: string) => {
     if (phone) {
       Linking.openURL(`tel:${phone}`);
+    }
+  };
+
+  const handleSeedSampleData = async () => {
+    try {
+      setRefreshing(true);
+      const res = await seed6GenerationsFamily();
+      await loadData();
+      toast.show(`Đã nạp thành công gia phả 6 đời (${res.totalCount} người)!`, 'success');
+    } catch (e) {
+      console.warn('Seed error:', e);
+      toast.show('Không thể nạp dữ liệu mẫu', 'error');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -227,10 +245,12 @@ export function HomeScreen() {
             description={
               searchQuery
                 ? `Không có kết quả nào khớp với "${searchQuery}". Hãy thử tìm bằng tên hoặc cách xưng hô khác.`
-                : 'Thêm người thân đầu tiên (Bố, Mẹ, Bác, Chú...) để bắt đầu lưu nhớ họ hàng.'
+                : 'Thêm người thân hoặc nạp mẫu gia phả 6 đời chuẩn (35 người, 4-7 con các đời trước, đời gần nhất 2 con).'
             }
-            actionTitle={searchQuery ? undefined : 'Thêm người thân ngay'}
-            onAction={searchQuery ? undefined : () => navigation.navigate('PersonForm', {})}
+            actionTitle={searchQuery ? undefined : 'Nạp mẫu gia phả 6 đời'}
+            onAction={searchQuery ? undefined : handleSeedSampleData}
+            secondaryActionTitle={searchQuery ? undefined : 'Thêm người thân thủ công'}
+            onSecondaryAction={searchQuery ? undefined : () => navigation.navigate('PersonForm', {})}
           />
         }
       />
