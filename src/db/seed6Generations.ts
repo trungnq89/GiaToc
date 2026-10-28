@@ -20,13 +20,15 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   // ==========================================
   // ĐỜI 1 (THẾ HỆ +4): BẬC CAO TỔ (Cụ Kỵ Khởi Tổ)
   // Sinh năm ~ 1880, Đã mất
+  // - Ruột thịt: Cụ Kỵ Khởi Tổ Nguyễn Đình Huệ
+  // - Bắc cầu (Hôn phối): Cụ Cao Tổ Mẫu Vũ Thị Nhạn
   // ==========================================
   const caoToPhu = await createPerson({
     name: 'Nguyễn Đình Huệ',
     nickname: 'Cụ Cao Tổ',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Cụ Kỵ (Cao Tổ Phụ)',
+    customRelationToMe: 'Cụ Kỵ ruột (Cao Tổ Phụ)',
     inferredRelationToMe: 'Cụ Kỵ khởi tổ',
     howTheyCallMe: 'Chắt đời thứ 5',
     generation: 4,
@@ -42,7 +44,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     nickname: 'Cụ Cao Tổ Mẫu',
     gender: 'female',
     branch: 'noi',
-    customRelationToMe: 'Cụ Kỵ (Cao Tổ Mẫu)',
+    customRelationToMe: 'Cụ Kỵ bà (Cao Tổ Mẫu)',
     inferredRelationToMe: 'Cụ Kỵ bà',
     howTheyCallMe: 'Chắt đời thứ 5',
     generation: 4,
@@ -64,16 +66,19 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   });
 
   // ==========================================
-  // ĐỜI 2 (THẾ HỆ +3): BẬC TẰNG TỔ (5 con của Đời 1)
+  // ĐỜI 2 (THẾ HỆ +3): BẬC TẰNG TỔ (5 người con của Đời 1)
   // Cụ Huệ & Cụ Nhạn sinh 5 người con (4 trai, 1 gái) -> Đạt tiêu chuẩn 4-7 con
+  // Xen kẽ đủ:
+  // - Ruột thịt: Cụ Bác Cả Huỳnh, Cụ Cố Khang, Cụ Chú Ba Phúc, Cụ Chú Tư Thịnh, Cụ Cô Năm Lan
+  // - Bắc cầu: Cụ Bác dâu Mùi, Cụ Cố bà Lụa, Cụ Thím dâu Sen, Cụ Dượng Hào
   // ==========================================
-  // 1. Cụ Cả Huỳnh
+  // 1. Cụ Cả Huỳnh (Ruột) & Cụ Bác dâu Mùi (Bắc cầu)
   const tangToHuynh = await createPerson({
     name: 'Nguyễn Đình Huỳnh',
     nickname: 'Cụ Cả',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Cụ Bác Cả',
+    customRelationToMe: 'Cụ Bác ruột (Cụ Cả)',
     inferredRelationToMe: 'Cụ Bác trưởng',
     generation: 3,
     birthYear: 1902,
@@ -81,10 +86,24 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     deathDateLunar: '14/04 Âm lịch',
     notes: 'Cụ Bác chi trên, gìn giữ gia quy nghiêm ngặt.',
   });
+  const cuBacDauMui = await createPerson({
+    name: 'Phan Thị Mùi',
+    nickname: 'Cụ Bác Dâu Cả',
+    gender: 'female',
+    branch: 'noi',
+    customRelationToMe: 'Cụ Bác dâu (Vợ Cụ Cả)',
+    inferredRelationToMe: 'Cụ Bác dâu',
+    generation: 3,
+    birthYear: 1904,
+    isDeceased: true,
+    deathDateLunar: '19/08 Âm lịch',
+    notes: 'Cụ Bác dâu hiền hậu, hay làm bánh khảo cúng gia tiên.',
+  });
   await linkParentChild(caoToPhu.id, tangToHuynh.id);
   await linkParentChild(caoToMau.id, tangToHuynh.id);
+  await linkRelatives(tangToHuynh.id, cuBacDauMui.id, 'spouse');
 
-  // 2. Cụ Hai Khang (Tằng Tổ ruột của Tôi)
+  // 2. Cụ Hai Khang (Tằng Tổ ruột của Tôi) & Cụ Cố bà Lụa
   const tangToKhang = await createPerson({
     name: 'Nguyễn Đình Khang',
     nickname: 'Cụ Cố Hai',
@@ -128,29 +147,42 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     notes: 'Làm giỗ tại nhà Bác Cả trưởng họ chi hai.',
   });
 
-  // 3. Cụ Ba Phúc
+  // 3. Cụ Ba Phúc (Ruột) & Cụ Thím dâu Sen (Bắc cầu)
   const tangToPhuc = await createPerson({
     name: 'Nguyễn Đình Phúc',
     nickname: 'Cụ Ba',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Cụ Chú Ba',
+    customRelationToMe: 'Cụ Chú ruột (Cụ Ba)',
     inferredRelationToMe: 'Cụ Chú',
     generation: 3,
     birthYear: 1909,
     isDeceased: true,
     deathDateLunar: '05/06 Âm lịch',
   });
+  const cuThimDauSen = await createPerson({
+    name: 'Bùi Thị Sen',
+    nickname: 'Cụ Thím Ba',
+    gender: 'female',
+    branch: 'noi',
+    customRelationToMe: 'Cụ Thím dâu (Vợ Cụ Ba)',
+    inferredRelationToMe: 'Cụ Thím',
+    generation: 3,
+    birthYear: 1911,
+    isDeceased: true,
+    deathDateLunar: '28/02 Âm lịch',
+  });
   await linkParentChild(caoToPhu.id, tangToPhuc.id);
   await linkParentChild(caoToMau.id, tangToPhuc.id);
+  await linkRelatives(tangToPhuc.id, cuThimDauSen.id, 'spouse');
 
-  // 4. Cụ Tư Thịnh
+  // 4. Cụ Tư Thịnh (Ruột)
   const tangToThinh = await createPerson({
     name: 'Nguyễn Đình Thịnh',
     nickname: 'Cụ Tư',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Cụ Chú Tư',
+    customRelationToMe: 'Cụ Chú ruột (Cụ Tư)',
     inferredRelationToMe: 'Cụ Chú',
     generation: 3,
     birthYear: 1912,
@@ -160,33 +192,53 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   await linkParentChild(caoToPhu.id, tangToThinh.id);
   await linkParentChild(caoToMau.id, tangToThinh.id);
 
-  // 5. Cụ Năm Lan (Bà Cụ Cô)
+  // 5. Cụ Năm Lan (Bà Cụ Cô Ruột) & Cụ Dượng Hào (Bắc cầu)
   const tangToLan = await createPerson({
     name: 'Nguyễn Thị Lan',
     nickname: 'Cụ Năm',
     gender: 'female',
     branch: 'noi',
-    customRelationToMe: 'Bà Cụ Cô',
+    customRelationToMe: 'Bà Cụ Cô ruột (Cụ Năm)',
     inferredRelationToMe: 'Bà Cụ Cô',
     generation: 3,
     birthYear: 1915,
     isDeceased: true,
     deathDateLunar: '12/12 Âm lịch',
   });
+  const cuDuongHao = await createPerson({
+    name: 'Trần Văn Hào',
+    nickname: 'Cụ Dượng Năm',
+    gender: 'male',
+    branch: 'noi',
+    customRelationToMe: 'Ông Cụ Dượng (Chồng Bà Cụ Cô)',
+    inferredRelationToMe: 'Cụ Dượng',
+    generation: 3,
+    birthYear: 1913,
+    isDeceased: true,
+    deathDateLunar: '08/04 Âm lịch',
+  });
   await linkParentChild(caoToPhu.id, tangToLan.id);
   await linkParentChild(caoToMau.id, tangToLan.id);
+  await linkRelatives(tangToLan.id, cuDuongHao.id, 'spouse');
 
   // ==========================================
   // ĐỜI 3 (THẾ HỆ +2): BẬC ÔNG BÀ (6 con của Cụ Khang & Cụ Lụa)
   // Cụ Khang & Cụ Lụa sinh 6 người con (4 trai, 2 gái) -> Đạt tiêu chuẩn 4-7 con
+  // Xen kẽ đầy đủ Ruột thịt và Bắc cầu:
+  // - Ông Bác ruột Trọng & Bà Bác dâu Quý
+  // - Ông Nội ruột Chính & Bà Nội ruột Mai
+  // - Ông Chú ruột Liêm & Bà Thím dâu Thục
+  // - Bà Cô ruột Tuyết & Ông Dượng Chung
+  // - Ông Chú ruột Hùng & Bà Thím dâu Phương
+  // - Bà Cô ruột Vân & Ông Dượng Tuấn
   // ==========================================
-  // 1. Ông Bác Cả Trọng
+  // 1. Ông Bác Cả Trọng (Ruột) & Bà Bác dâu Quý (Bắc cầu)
   const ongBacTrong = await createPerson({
     name: 'Nguyễn Đình Trọng',
     nickname: 'Ông Bác Cả',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Ông Bác Cả',
+    customRelationToMe: 'Ông Bác ruột (Bác Cả)',
     inferredRelationToMe: 'Ông Bác trưởng',
     generation: 2,
     birthYear: 1930,
@@ -194,10 +246,24 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     deathDateLunar: '22/10 Âm lịch',
     address: 'Ba Vì, Hà Nội',
   });
+  const baBacDauQuy = await createPerson({
+    name: 'Phạm Thị Quý',
+    nickname: 'Bà Bác Cả',
+    gender: 'female',
+    branch: 'noi',
+    customRelationToMe: 'Bà Bác dâu (Vợ Ông Bác Cả)',
+    inferredRelationToMe: 'Bà Bác dâu',
+    generation: 2,
+    birthYear: 1932,
+    isDeceased: true,
+    deathDateLunar: '16/05 Âm lịch',
+    address: 'Ba Vì, Hà Nội',
+  });
   await linkParentChild(tangToKhang.id, ongBacTrong.id);
   await linkParentChild(tangToLua.id, ongBacTrong.id);
+  await linkRelatives(ongBacTrong.id, baBacDauQuy.id, 'spouse');
 
-  // 2. Ông Nội của Tôi: Nguyễn Đình Chính
+  // 2. Ông Nội ruột: Nguyễn Đình Chính & Bà Nội: Hoàng Thị Mai
   const ongNoiChinh = await createPerson({
     name: 'Nguyễn Đình Chính',
     nickname: 'Ông Nội',
@@ -241,29 +307,42 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     notes: 'Giỗ ông nội tại nhà thờ họ chi hai, con cháu tụ họp đông đủ làm cơm dâng cúng.',
   });
 
-  // 3. Ông Chú Ba Liêm
+  // 3. Ông Chú Ba Liêm (Ruột) & Bà Thím dâu Thục (Bắc cầu)
   const ongChuLiem = await createPerson({
     name: 'Nguyễn Đình Liêm',
     nickname: 'Ông Chú Ba',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Ông Chú Ba',
+    customRelationToMe: 'Ông Chú ruột (Chú Ba)',
     inferredRelationToMe: 'Ông Chú',
     generation: 2,
     birthYear: 1937,
     isDeceased: true,
     deathDateLunar: '15/07 Âm lịch',
   });
+  const baThimDauThuc = await createPerson({
+    name: 'Đoàn Thị Thục',
+    nickname: 'Bà Thím Ba',
+    gender: 'female',
+    branch: 'noi',
+    customRelationToMe: 'Bà Thím dâu (Vợ Ông Chú Ba)',
+    inferredRelationToMe: 'Bà Thím',
+    generation: 2,
+    birthYear: 1940,
+    isDeceased: true,
+    deathDateLunar: '03/11 Âm lịch',
+  });
   await linkParentChild(tangToKhang.id, ongChuLiem.id);
   await linkParentChild(tangToLua.id, ongChuLiem.id);
+  await linkRelatives(ongChuLiem.id, baThimDauThuc.id, 'spouse');
 
-  // 4. Bà Cô Tư Tuyết
+  // 4. Bà Cô Tư Tuyết (Ruột) & Ông Dượng Chung (Bắc cầu)
   const baCoTuyet = await createPerson({
     name: 'Nguyễn Thị Tuyết',
     nickname: 'Bà Cô Tư',
     gender: 'female',
     branch: 'noi',
-    customRelationToMe: 'Bà Cô Tư',
+    customRelationToMe: 'Bà Cô ruột (Cô Tư)',
     inferredRelationToMe: 'Bà Cô ruột',
     generation: 2,
     birthYear: 1941,
@@ -272,16 +351,30 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     address: 'Việt Trì, Phú Thọ',
     notes: 'Bà cô rất xởi lởi, hay gửi quà bánh quê về cho các cháu.',
   });
+  const ongDuongChung = await createPerson({
+    name: 'Lê Văn Chung',
+    nickname: 'Ông Dượng Chung',
+    gender: 'male',
+    branch: 'noi',
+    customRelationToMe: 'Ông Dượng (Chồng Bà Cô Tư)',
+    inferredRelationToMe: 'Ông Dượng',
+    generation: 2,
+    birthYear: 1939,
+    isDeceased: true,
+    deathDateLunar: '11/09 Âm lịch',
+    address: 'Việt Trì, Phú Thọ',
+  });
   await linkParentChild(tangToKhang.id, baCoTuyet.id);
   await linkParentChild(tangToLua.id, baCoTuyet.id);
+  await linkRelatives(baCoTuyet.id, ongDuongChung.id, 'spouse');
 
-  // 5. Ông Chú Năm Hùng
+  // 5. Ông Chú Năm Hùng (Ruột) & Bà Thím dâu Phương (Bắc cầu)
   const ongChuHung = await createPerson({
     name: 'Nguyễn Đình Hùng',
     nickname: 'Ông Chú Năm',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Ông Chú Năm',
+    customRelationToMe: 'Ông Chú ruột (Chú Năm)',
     inferredRelationToMe: 'Ông Chú',
     generation: 2,
     birthYear: 1945,
@@ -290,16 +383,30 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     address: 'Quận 1, TP. Hồ Chí Minh',
     notes: 'Cán bộ miền Nam tập kết, nay nghỉ hưu tại Sài Gòn.',
   });
+  const baThimDauPhuong = await createPerson({
+    name: 'Ngô Lan Phương',
+    nickname: 'Bà Thím Năm',
+    gender: 'female',
+    branch: 'noi',
+    customRelationToMe: 'Bà Thím dâu (Vợ Ông Chú Năm)',
+    inferredRelationToMe: 'Bà Thím',
+    generation: 2,
+    birthYear: 1947,
+    isDeceased: false,
+    phone: '0977333555',
+    address: 'Quận 1, TP. Hồ Chí Minh',
+  });
   await linkParentChild(tangToKhang.id, ongChuHung.id);
   await linkParentChild(tangToLua.id, ongChuHung.id);
+  await linkRelatives(ongChuHung.id, baThimDauPhuong.id, 'spouse');
 
-  // 6. Bà Cô Sáu Vân
+  // 6. Bà Cô Sáu Vân (Ruột) & Ông Dượng Tuấn (Bắc cầu)
   const baCoVan = await createPerson({
     name: 'Nguyễn Thị Vân',
     nickname: 'Bà Cô Sáu',
     gender: 'female',
     branch: 'noi',
-    customRelationToMe: 'Bà Cô Sáu',
+    customRelationToMe: 'Bà Cô ruột (Cô Sáu)',
     inferredRelationToMe: 'Bà Cô',
     generation: 2,
     birthYear: 1948,
@@ -307,20 +414,40 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     phone: '0966555777',
     address: 'Nha Trang, Khánh Hòa',
   });
+  const ongDuongTuan = await createPerson({
+    name: 'Ngô Thế Tuấn',
+    nickname: 'Ông Dượng Tuấn',
+    gender: 'male',
+    branch: 'noi',
+    customRelationToMe: 'Ông Dượng (Chồng Bà Cô Sáu)',
+    inferredRelationToMe: 'Ông Dượng',
+    generation: 2,
+    birthYear: 1946,
+    isDeceased: false,
+    phone: '0966555888',
+    address: 'Nha Trang, Khánh Hòa',
+  });
   await linkParentChild(tangToKhang.id, baCoVan.id);
   await linkParentChild(tangToLua.id, baCoVan.id);
+  await linkRelatives(baCoVan.id, ongDuongTuan.id, 'spouse');
 
   // ==========================================
   // ĐỜI 4 (THẾ HỆ +1): BẬC CHA CHÚ (5 con của Ông Chính & Bà Mai)
   // Ông Chính & Bà Mai sinh 5 người con (4 trai, 1 gái) -> Đạt tiêu chuẩn 4-7 con
+  // Xen kẽ đầy đủ Ruột thịt và Bắc cầu:
+  // - Bác ruột Tuấn (Bác Cả) & Bác dâu Hương
+  // - Bố ruột Bình & Mẹ ruột Thu
+  // - Chú ruột Dũng (Chú Ba) & Thím dâu Oanh
+  // - Cô ruột Hằng (Cô Tư) & Chú Dượng Long
+  // - Chú ruột Nam (Chú Út) & Thím dâu Linh
   // ==========================================
-  // 1. Bác Cả Tuấn (Trưởng họ chi hai)
+  // 1. Bác Cả Tuấn (Ruột) & Bác Dâu Cả Hương (Bắc cầu)
   const bacCaTuan = await createPerson({
     name: 'Nguyễn Đình Tuấn',
     nickname: 'Bác Cả',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Bác Cả (Trưởng họ)',
+    customRelationToMe: 'Bác ruột (Bác Cả trưởng họ)',
     inferredRelationToMe: 'Bác trai (Anh của Bố)',
     howTheyCallMe: 'Cháu Trung',
     generation: 1,
@@ -335,9 +462,9 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     nickname: 'Bác Dâu Cả',
     gender: 'female',
     branch: 'noi',
-    customRelationToMe: 'Bác Dâu Cả',
+    customRelationToMe: 'Bác dâu (Vợ Bác Cả)',
     inferredRelationToMe: 'Bác dâu (Vợ Bác Cả)',
-    howTheyCallMe: 'Cháu',
+    howTheyCallMe: 'Cháu Trung',
     generation: 1,
     birthYear: 1961,
     isDeceased: false,
@@ -347,7 +474,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   await linkParentChild(baNoiMai.id, bacCaTuan.id);
   await linkRelatives(bacCaTuan.id, bacGaiHuong.id, 'spouse');
 
-  // 2. Bố của Tôi: Nguyễn Đình Bình
+  // 2. Bố ruột: Nguyễn Đình Bình & Mẹ ruột: Lê Thị Thu
   const boBinh = await createPerson({
     name: 'Nguyễn Đình Bình',
     nickname: 'Bố Bình',
@@ -382,13 +509,13 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   await linkParentChild(baNoiMai.id, boBinh.id);
   await linkRelatives(boBinh.id, meThu.id, 'spouse');
 
-  // 3. Chú Ba Dũng
+  // 3. Chú ruột Dũng (Chú Ba) & Thím dâu Oanh (Bắc cầu)
   const chuBaDung = await createPerson({
     name: 'Nguyễn Đình Dũng',
     nickname: 'Chú Ba',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Chú Ba',
+    customRelationToMe: 'Chú ruột (Chú Ba)',
     inferredRelationToMe: 'Chú (Em trai của Bố)',
     howTheyCallMe: 'Cháu Trung',
     generation: 1,
@@ -403,9 +530,9 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     nickname: 'Thím Ba',
     gender: 'female',
     branch: 'noi',
-    customRelationToMe: 'Thím Ba',
+    customRelationToMe: 'Thím dâu (Vợ Chú Ba)',
     inferredRelationToMe: 'Thím (Vợ Chú Ba)',
-    howTheyCallMe: 'Cháu',
+    howTheyCallMe: 'Cháu Trung',
     generation: 1,
     birthYear: 1970,
     isDeceased: false,
@@ -415,15 +542,15 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   await linkParentChild(baNoiMai.id, chuBaDung.id);
   await linkRelatives(chuBaDung.id, thimOanh.id, 'spouse');
 
-  // 4. Cô Tư Hằng
+  // 4. Cô ruột Hằng (Cô Tư) & Chú Dượng Long (Bắc cầu)
   const coTuHang = await createPerson({
     name: 'Nguyễn Thị Hằng',
     nickname: 'Cô Tư',
     gender: 'female',
     branch: 'noi',
-    customRelationToMe: 'Cô Tư',
+    customRelationToMe: 'Cô ruột (Cô Tư)',
     inferredRelationToMe: 'Cô ruột (Em gái của Bố)',
-    howTheyCallMe: 'Cháu',
+    howTheyCallMe: 'Cháu Trung',
     generation: 1,
     birthYear: 1972,
     isDeceased: false,
@@ -431,16 +558,31 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     address: 'Lê Chân, Hải Phòng',
     notes: 'Kế toán trưởng, rất thương các cháu, năm nào cũng gửi hải sản về biếu gia đình.',
   });
+  const chuDuongLong = await createPerson({
+    name: 'Đặng Văn Long',
+    nickname: 'Chú Dượng Long',
+    gender: 'male',
+    branch: 'noi',
+    customRelationToMe: 'Chú Dượng (Chồng Cô Tư)',
+    inferredRelationToMe: 'Chú Dượng',
+    howTheyCallMe: 'Cháu Trung',
+    generation: 1,
+    birthYear: 1971,
+    isDeceased: false,
+    phone: '0983123789',
+    address: 'Lê Chân, Hải Phòng',
+  });
   await linkParentChild(ongNoiChinh.id, coTuHang.id);
   await linkParentChild(baNoiMai.id, coTuHang.id);
+  await linkRelatives(coTuHang.id, chuDuongLong.id, 'spouse');
 
-  // 5. Chú Út Nam
+  // 5. Chú ruột Nam (Chú Út) & Thím dâu Linh (Bắc cầu)
   const chuUtNam = await createPerson({
     name: 'Nguyễn Đình Nam',
     nickname: 'Chú Út',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Chú Út',
+    customRelationToMe: 'Chú ruột (Chú Út)',
     inferredRelationToMe: 'Chú (Em út của Bố)',
     howTheyCallMe: 'Cháu Trung',
     generation: 1,
@@ -450,20 +592,39 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     address: 'Hải Châu, Đà Nẵng',
     notes: 'Kiến trúc sư sinh sống tại Đà Nẵng.',
   });
+  const thimUtLinh = await createPerson({
+    name: 'Ngô Phương Linh',
+    nickname: 'Thím Út',
+    gender: 'female',
+    branch: 'noi',
+    customRelationToMe: 'Thím dâu (Vợ Chú Út)',
+    inferredRelationToMe: 'Thím (Vợ Chú Út)',
+    howTheyCallMe: 'Cháu Trung',
+    generation: 1,
+    birthYear: 1978,
+    isDeceased: false,
+    address: 'Hải Châu, Đà Nẵng',
+  });
   await linkParentChild(ongNoiChinh.id, chuUtNam.id);
   await linkParentChild(baNoiMai.id, chuUtNam.id);
+  await linkRelatives(chuUtNam.id, thimUtLinh.id, 'spouse');
 
   // ==========================================
   // ĐỜI 5 (THẾ HỆ 0): THẾ HỆ CỦA TÔI & ANH CHỊ EM
-  // Mỗi gia đình đời trước (Bác Cả, Bố Bình, Chú Dũng) đều có 4 con:
-  // - Bác Cả Tuấn & Bác Hương: 4 con (Phong, Trang, Vũ, Mai) -> 4 con
-  // - Bố Bình & Mẹ Thu: 4 con (Anh Hưng, Tôi - Trung, Em Thành, Em Linh) -> 4 con
-  // - Chú Ba Dũng & Thím Oanh: 4 con (Long, Huyền, Nam, My) -> 4 con
-  // - Cô Tư Hằng: Em Huy
-  // - Vợ của Tôi: Lê Thị Thảo
+  // Xen kẽ đầy đủ Ruột thịt và Bắc cầu:
+  // - Anh trai ruột Hưng & Chị dâu ruột Hà
+  // - Tôi (Trung) & Vợ Thảo
+  // - Em trai ruột Thành & Em dâu ruột Quỳnh
+  // - Em gái ruột Linh & Em rể ruột Tuấn
+  // - Anh họ Phong & Chị dâu họ Mai Anh
+  // - Chị họ Trang & Anh rể họ Minh
+  // - Anh họ Vũ, Chị họ Mai
+  // - Em họ Long & Em dâu họ Ly
+  // - Em họ Huyền, Em họ Nam, Em họ My
+  // - Em họ Quang Huy
   // ==========================================
 
-  // --- Gia đình Bác Cả (4 con) ---
+  // --- 1. Gia đình Bác Cả (4 con: Phong, Trang, Vũ, Mai) ---
   const anhPhong = await createPerson({
     name: 'Nguyễn Đình Phong',
     nickname: 'Anh Phong',
@@ -484,8 +645,8 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     nickname: 'Chị Dâu Phong',
     gender: 'female',
     branch: 'noi',
-    customRelationToMe: 'Chị dâu họ',
-    inferredRelationToMe: 'Chị dâu',
+    customRelationToMe: 'Chị dâu họ (Vợ Anh Phong)',
+    inferredRelationToMe: 'Chị dâu họ',
     howTheyCallMe: 'Chú Trung',
     generation: 0,
     birthYear: 1988,
@@ -510,8 +671,22 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     address: 'Cầu Giấy, Hà Nội',
     notes: 'Giảng viên Đại học Ngoại Ngữ.',
   });
+  const anhReMinh = await createPerson({
+    name: 'Trần Đức Minh',
+    nickname: 'Anh Rể Minh',
+    gender: 'male',
+    branch: 'noi',
+    customRelationToMe: 'Anh rể họ (Chồng Chị Trang)',
+    inferredRelationToMe: 'Anh rể họ',
+    howTheyCallMe: 'Cậu Trung',
+    generation: 0,
+    birthYear: 1987,
+    isDeceased: false,
+    phone: '0976111333',
+  });
   await linkParentChild(bacCaTuan.id, chiTrang.id);
   await linkParentChild(bacGaiHuong.id, chiTrang.id);
+  await linkRelatives(chiTrang.id, anhReMinh.id, 'spouse');
 
   const anhVu = await createPerson({
     name: 'Nguyễn Đình Vũ',
@@ -546,14 +721,15 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   await linkParentChild(bacCaTuan.id, chiMai.id);
   await linkParentChild(bacGaiHuong.id, chiMai.id);
 
-  // --- Gia đình Bố Bình (4 con: Anh Hưng, Tôi, Em Thành, Em Linh) ---
+  // --- 2. Gia đình Bố Bình (4 con ruột: Anh Hưng, Tôi, Em Thành, Em Linh) ---
+  // Anh trai ruột Hưng & Chị dâu ruột Hà
   const anhHung = await createPerson({
     name: 'Nguyễn Đình Hưng',
     nickname: 'Anh Hưng',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Anh trai cả ruột',
-    inferredRelationToMe: 'Anh ruột',
+    customRelationToMe: 'Anh trai ruột',
+    inferredRelationToMe: 'Anh trai ruột',
     howTheyCallMe: 'Em Trung',
     generation: 0,
     birthYear: 1991,
@@ -562,8 +738,24 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     address: 'Hà Đông, Hà Nội',
     notes: 'Bác sĩ ngoại khoa tại Bệnh viện Bạch Mai.',
   });
+  const chiDauHa = await createPerson({
+    name: 'Phạm Thu Hà',
+    nickname: 'Chị Dâu Hà',
+    gender: 'female',
+    branch: 'noi',
+    customRelationToMe: 'Chị dâu ruột (Vợ Anh Hưng)',
+    inferredRelationToMe: 'Chị dâu ruột',
+    howTheyCallMe: 'Chú Trung',
+    generation: 0,
+    birthYear: 1993,
+    isDeceased: false,
+    phone: '0981999777',
+    address: 'Hà Đông, Hà Nội',
+    notes: 'Dược sĩ tại Bệnh viện Bạch Mai, khéo léo, chu đáo.',
+  });
   await linkParentChild(boBinh.id, anhHung.id);
   await linkParentChild(meThu.id, anhHung.id);
+  await linkRelatives(anhHung.id, chiDauHa.id, 'spouse');
 
   // Vợ của Tôi:
   const voThao = await createPerson({
@@ -582,7 +774,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     notes: 'Bác sĩ nhi khoa bệnh viện Nhi TW, hiền dịu, chăm lo chu đáo cho gia đình.',
   });
 
-  // Em trai ruột của Tôi:
+  // Em trai ruột của Tôi: Thành & Em dâu ruột Quỳnh
   const emTraiThanh = await createPerson({
     name: 'Nguyễn Đình Thành',
     nickname: 'Thành Béo',
@@ -598,10 +790,25 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     address: 'Cầu Giấy, Hà Nội',
     notes: 'Lập trình viên backend, tính vui vẻ, thích chơi đá bóng cuối tuần.',
   });
+  const emDauQuynh = await createPerson({
+    name: 'Võ Thị Quỳnh',
+    nickname: 'Quỳnh Dâu',
+    gender: 'female',
+    branch: 'noi',
+    customRelationToMe: 'Em dâu ruột (Vợ Em Thành)',
+    inferredRelationToMe: 'Em dâu ruột',
+    howTheyCallMe: 'Bác Trung',
+    generation: 0,
+    birthYear: 2000,
+    isDeceased: false,
+    phone: '0966444666',
+    notes: 'Thiết kế đồ họa, hiền lành, yêu trẻ con.',
+  });
   await linkParentChild(boBinh.id, emTraiThanh.id);
   await linkParentChild(meThu.id, emTraiThanh.id);
+  await linkRelatives(emTraiThanh.id, emDauQuynh.id, 'spouse');
 
-  // Em gái ruột của Tôi:
+  // Em gái ruột của Tôi: Linh & Em rể ruột Tuấn
   const emGaiLinh = await createPerson({
     name: 'Nguyễn Thuỳ Linh',
     nickname: 'Bé Linh',
@@ -617,10 +824,25 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     address: 'Cầu Giấy, Hà Nội',
     notes: 'Tốt nghiệp cử nhân Ngoại thương, đang làm việc tại công ty đa quốc gia.',
   });
+  const emReTuan = await createPerson({
+    name: 'Hoàng Quốc Tuấn',
+    nickname: 'Tuấn Rể',
+    gender: 'male',
+    branch: 'noi',
+    customRelationToMe: 'Em rể ruột (Chồng Em Linh)',
+    inferredRelationToMe: 'Em rể ruột',
+    howTheyCallMe: 'Anh Trung',
+    generation: 0,
+    birthYear: 2000,
+    isDeceased: false,
+    phone: '0987333111',
+    notes: 'Chuyên viên tài chính ngân hàng, năng động.',
+  });
   await linkParentChild(boBinh.id, emGaiLinh.id);
   await linkParentChild(meThu.id, emGaiLinh.id);
+  await linkRelatives(emGaiLinh.id, emReTuan.id, 'spouse');
 
-  // --- Gia đình Chú Ba Dũng (4 con) ---
+  // --- 3. Gia đình Chú Ba Dũng (4 con: Long, Huyền, Nam, My) ---
   const emLong = await createPerson({
     name: 'Nguyễn Đình Long',
     nickname: 'Long Kều',
@@ -635,8 +857,22 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     phone: '0943555777',
     address: 'Thanh Xuân, Hà Nội',
   });
+  const emDauLy = await createPerson({
+    name: 'Bùi Khánh Ly',
+    nickname: 'Ly Dâu',
+    gender: 'female',
+    branch: 'noi',
+    customRelationToMe: 'Em dâu họ (Vợ Em Long)',
+    inferredRelationToMe: 'Em dâu họ',
+    howTheyCallMe: 'Anh Trung',
+    generation: 0,
+    birthYear: 1999,
+    isDeceased: false,
+    phone: '0943555888',
+  });
   await linkParentChild(chuBaDung.id, emLong.id);
   await linkParentChild(thimOanh.id, emLong.id);
+  await linkRelatives(emLong.id, emDauLy.id, 'spouse');
 
   const emHuyen = await createPerson({
     name: 'Nguyễn Khánh Huyền',
@@ -685,7 +921,7 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   await linkParentChild(chuBaDung.id, emMy.id);
   await linkParentChild(thimOanh.id, emMy.id);
 
-  // --- Con Cô Tư Hằng ---
+  // --- 4. Con Cô Tư Hằng ---
   const emHuy = await createPerson({
     name: 'Đặng Quang Huy',
     nickname: 'Huy Còi',
@@ -701,21 +937,23 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     address: 'Hải Phòng',
   });
   await linkParentChild(coTuHang.id, emHuy.id);
+  await linkParentChild(chuDuongLong.id, emHuy.id);
 
   // ==========================================
   // ĐỜI 6 (THẾ HỆ -1): BẬC CON CHÁU ĐỜI MỚI NHẤT
   // "Đời gần nhất thì có 2 con":
-  // - Tôi & Vợ Thảo có đúng 2 con nhỏ (Bé Khôi & Bé An)
-  // - Anh họ trưởng chi (Anh Phong & Chị Mai Anh) có đúng 2 con (Bé Bảo & Bé Diệp)
+  // - Tôi & Vợ Thảo có đúng 2 con ruột (Bé Khôi & Bé An)
+  // - Anh trai ruột Hưng & Chị dâu Hà có đúng 2 con (Cháu ruột)
+  // - Anh họ trưởng chi Phong & Chị Mai Anh có đúng 2 con (Cháu họ)
   // ==========================================
-  // 1. Con trai cả của Tôi:
+  // 1. Con trai cả ruột của Tôi:
   const conTraiKhoi = await createPerson({
     name: 'Nguyễn Quang Khôi',
     nickname: 'Bé Khôi (Cún)',
     gender: 'male',
     branch: 'noi',
-    customRelationToMe: 'Con trai cả',
-    inferredRelationToMe: 'Con trai',
+    customRelationToMe: 'Con trai cả ruột',
+    inferredRelationToMe: 'Con trai ruột',
     howTheyCallMe: 'Bố Trung',
     generation: -1,
     birthYear: 2022,
@@ -724,14 +962,14 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   });
   await linkParentChild(voThao.id, conTraiKhoi.id);
 
-  // 2. Con gái út của Tôi:
+  // 2. Con gái út ruột của Tôi:
   const conGaiAn = await createPerson({
     name: 'Nguyễn Tuệ An',
     nickname: 'Bé An (Thỏ)',
     gender: 'female',
     branch: 'noi',
-    customRelationToMe: 'Con gái út',
-    inferredRelationToMe: 'Con gái',
+    customRelationToMe: 'Con gái út ruột',
+    inferredRelationToMe: 'Con gái ruột',
     howTheyCallMe: 'Bố Trung',
     generation: -1,
     birthYear: 2024,
@@ -740,7 +978,39 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   });
   await linkParentChild(voThao.id, conGaiAn.id);
 
-  // Cháu họ: 2 con của Anh Phong
+  // 3. Cháu ruột: 2 con của Anh ruột Hưng & Chị dâu Hà
+  const chauRuotKhangAn = await createPerson({
+    name: 'Nguyễn Đình Khang An',
+    nickname: 'Bé Khang An',
+    gender: 'male',
+    branch: 'noi',
+    customRelationToMe: 'Cháu trai ruột (Con Anh Hưng)',
+    inferredRelationToMe: 'Cháu ruột (gọi là Chú)',
+    howTheyCallMe: 'Chú Trung',
+    generation: -1,
+    birthYear: 2021,
+    isDeceased: false,
+    notes: 'Cháu đích tôn của Bố Mẹ, rất thông minh, mê đàn piano.',
+  });
+  await linkParentChild(anhHung.id, chauRuotKhangAn.id);
+  await linkParentChild(chiDauHa.id, chauRuotKhangAn.id);
+
+  const chauRuotTueLam = await createPerson({
+    name: 'Nguyễn Tuệ Lâm',
+    nickname: 'Bé Nhím',
+    gender: 'female',
+    branch: 'noi',
+    customRelationToMe: 'Cháu gái ruột (Con Anh Hưng)',
+    inferredRelationToMe: 'Cháu ruột (gọi là Chú)',
+    howTheyCallMe: 'Chú Trung',
+    generation: -1,
+    birthYear: 2023,
+    isDeceased: false,
+  });
+  await linkParentChild(anhHung.id, chauRuotTueLam.id);
+  await linkParentChild(chiDauHa.id, chauRuotTueLam.id);
+
+  // 4. Cháu họ: 2 con của Anh họ Phong & Chị dâu họ Mai Anh
   const chauBao = await createPerson({
     name: 'Nguyễn Đình Bảo',
     nickname: 'Bảo Bảo',
@@ -773,5 +1043,5 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   await linkParentChild(anhPhong.id, chauDiep.id);
   await linkParentChild(chiDauAnh.id, chauDiep.id);
 
-  return { totalCount: 35 };
+  return { totalCount: 47 };
 }
