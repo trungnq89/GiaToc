@@ -74,6 +74,10 @@ export interface MemorialEvent {
   id: string;
   personId: string;
   personName: string;
+  avatarUri?: string;
+  relationToMe?: string;
+  gender?: Gender;
+  branch?: FamilyBranch;
   title: string;
   eventType: 'death_anniversary' | 'birthday' | 'other';
   lunarDay?: number;

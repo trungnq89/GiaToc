@@ -6,6 +6,10 @@ interface EventRow {
   id: string;
   person_id: string;
   person_name: string;
+  avatar_uri?: string | null;
+  custom_relation_to_me?: string | null;
+  gender?: string | null;
+  branch?: string | null;
   title: string;
   event_type: string;
   lunar_day: number | null;
@@ -21,6 +25,10 @@ function mapRow(row: EventRow): MemorialEvent {
     id: row.id,
     personId: row.person_id,
     personName: row.person_name,
+    avatarUri: row.avatar_uri ?? undefined,
+    relationToMe: row.custom_relation_to_me ?? undefined,
+    gender: (row.gender as MemorialEvent['gender']) ?? undefined,
+    branch: (row.branch as MemorialEvent['branch']) ?? undefined,
     title: row.title,
     eventType: row.event_type as MemorialEvent['eventType'],
     lunarDay: row.lunar_day ?? undefined,
@@ -34,7 +42,7 @@ function mapRow(row: EventRow): MemorialEvent {
 
 export async function listAllMemorialEvents(): Promise<MemorialEvent[]> {
   const sql = `
-    SELECT e.*, p.name as person_name
+    SELECT e.*, p.name as person_name, p.avatar_uri, p.custom_relation_to_me, p.gender, p.branch
     FROM memorial_events e
     INNER JOIN persons p ON e.person_id = p.id
     ORDER BY e.lunar_month ASC, e.lunar_day ASC;

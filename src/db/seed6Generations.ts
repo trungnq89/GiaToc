@@ -357,6 +357,15 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   await linkParentChild(tangToLua.id, ongBacTrong.id);
   await linkRelatives(ongBacTrong.id, baBacDauQuy.id, 'spouse');
 
+  await createMemorialEvent({
+    personId: ongBacTrong.id,
+    title: 'Ngày giỗ Ông Bác Cả Nguyễn Đình Trọng',
+    eventType: 'death_anniversary',
+    lunarDay: 22,
+    lunarMonth: 10,
+    notes: 'Giỗ Bác Cả tại nhà thờ chi trưởng, các gia đình mang lễ vật cúng giỗ.',
+  });
+
   // 2. Ông Nội ruột: Nguyễn Đình Chính & Bà Nội: Hoàng Thị Mai
   const ongNoiChinh = await createPerson({
     name: 'Nguyễn Đình Chính',
@@ -434,6 +443,24 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
   await linkParentChild(tangToLua.id, ongChuLiem.id);
   await linkRelatives(ongChuLiem.id, baThimDauThuc.id, 'spouse');
 
+  await createMemorialEvent({
+    personId: ongChuLiem.id,
+    title: 'Ngày giỗ Ông Chú Ba Nguyễn Đình Liêm',
+    eventType: 'death_anniversary',
+    lunarDay: 15,
+    lunarMonth: 7,
+    notes: 'Lễ giỗ rằm tháng Bảy kết hợp lễ Vu Lan báo hiếu tổ tiên.',
+  });
+
+  await createMemorialEvent({
+    personId: baThimDauThuc.id,
+    title: 'Ngày giỗ Bà Thím Ba Đoàn Thị Thục',
+    eventType: 'death_anniversary',
+    lunarDay: 3,
+    lunarMonth: 11,
+    notes: 'Lễ giỗ bà thím do con cháu chi ba phụ trách chuẩn bị cỗ chay và mặn.',
+  });
+
   // 4. Bà Cô Tư Tuyết (Ruột) & Ông Dượng Chung (Bắc cầu)
   const baCoTuyet = await createPerson({
     name: 'Nguyễn Thị Tuyết',
@@ -461,12 +488,21 @@ export async function seed6GenerationsFamily(): Promise<{ totalCount: number }> 
     birthYear: 1939,
     avatarUri: SAMPLE_AVATARS.ongDuongChung,
     isDeceased: true,
-    deathDateLunar: '11/09 Âm lịch',
+    deathDateLunar: '24/09 Âm lịch',
     address: 'Việt Trì, Phú Thọ',
   });
   await linkParentChild(tangToKhang.id, baCoTuyet.id);
   await linkParentChild(tangToLua.id, baCoTuyet.id);
   await linkRelatives(baCoTuyet.id, ongDuongChung.id, 'spouse');
+
+  await createMemorialEvent({
+    personId: ongDuongChung.id,
+    title: 'Ngày giỗ Ông Dượng Hoàng Đình Chung',
+    eventType: 'death_anniversary',
+    lunarDay: 24,
+    lunarMonth: 9,
+    notes: 'Lễ giỗ ông Dượng Chung tại Việt Trì, con cháu tụ họp đông đủ thắp hương tưởng niệm.',
+  });
 
   // 5. Ông Chú Năm Hùng (Ruột) & Bà Thím dâu Phương (Bắc cầu)
   const ongChuHung = await createPerson({

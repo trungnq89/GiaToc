@@ -17,6 +17,7 @@ import { Person } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
 import { Avatar, ScreenHeader, Icon, useToast } from '../../components';
 import { getBranchLabel } from '../../utils/kinshipCalculator';
+import { parseLunarDateString, calculateAnniversaryCountdown } from '../../utils/lunarCalendar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ScreenRouteProp = RouteProp<RootStackParamList, 'PersonDetail'>;
@@ -276,14 +277,58 @@ export function PersonDetailScreen() {
             </Text>
           </View>
 
-          {person.isDeceased && person.deathDateLunar ? (
-            <View style={styles.detailRow}>
-              <Text style={[typography.body2, styles.detailLabel]}>Ngày giỗ:</Text>
-              <Text style={[typography.body1, { color: colors.primary, fontWeight: '700' }]}>
-                {person.deathDateLunar}
-              </Text>
-            </View>
-          ) : null}
+          {person.isDeceased && person.deathDateLunar ? (() => {
+            const parsed = parseLunarDateString(person.deathDateLunar);
+            const countdown = parsed
+              ? calculateAnniversaryCountdown({ lunarDay: parsed.day, lunarMonth: parsed.month })
+              : null;
+
+            return (
+              <View style={styles.anniversaryContainer}>
+                <View style={styles.detailRow}>
+                  <Text style={[typography.body2, styles.detailLabel]}>Ngày giỗ:</Text>
+                  <Text style={[typography.body1, { color: colors.primary, fontWeight: '700' }]}>
+                    {person.deathDateLunar}
+                  </Text>
+                </View>
+
+                {countdown ? (
+                  <View
+                    style={[
+                      styles.countdownPill,
+                      countdown.isToday
+                        ? styles.pillToday
+                        : countdown.isWithinWeek
+                        ? styles.pillSoon
+                        : styles.pillNormal,
+                    ]}>
+                    <Icon
+                      name={countdown.isToday ? 'fire' : countdown.isWithinWeek ? 'timer-sand' : 'calendar-clock'}
+                      size={15}
+                      color={
+                        countdown.isToday
+                          ? '#C62828'
+                          : countdown.isWithinWeek
+                          ? '#D97706'
+                          : colors.primary
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.countdownPillText,
+                        countdown.isToday
+                          ? styles.pillTextToday
+                          : countdown.isWithinWeek
+                          ? styles.pillTextSoon
+                          : styles.pillTextNormal,
+                      ]}>
+                      {countdown.countdownText} • Dương lịch: {countdown.formattedNextSolar}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })() : null}
 
           {person.birthYear ? (
             <View style={styles.detailRow}>
@@ -483,6 +528,46 @@ const styles = StyleSheet.create({
   deceasedText: {
     color: colors.deceased,
     fontWeight: '600',
+  },
+  anniversaryContainer: {
+    paddingVertical: spacing.xs,
+  },
+  countdownPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    marginTop: 4,
+    borderWidth: 1,
+  },
+  pillToday: {
+    backgroundColor: '#FFEBEE',
+    borderColor: '#FFCDD2',
+  },
+  pillSoon: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  pillNormal: {
+    backgroundColor: colors.primarySoft,
+    borderColor: '#E8D5C4',
+  },
+  countdownPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  pillTextToday: {
+    color: '#B71C1C',
+    fontWeight: '700',
+  },
+  pillTextSoon: {
+    color: '#B45309',
+    fontWeight: '700',
+  },
+  pillTextNormal: {
+    color: colors.primary,
   },
   notesBlock: {
     marginTop: spacing.sm,
