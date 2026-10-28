@@ -22,7 +22,7 @@ import { query } from '../../db/database';
 import { PersonSummary, FamilyBranch } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
 import { Chip, Icon, ScreenHeader, useToast, Avatar } from '../../components';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type ScreenRouteProp = RouteProp<RootStackParamList, 'TreeExport'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -182,6 +182,7 @@ export function TreeExportScreen() {
   const navigation = useNavigation<NavigationProp>();
   const toast = useToast();
   const user = useSessionStore(s => s.user);
+  const insets = useSafeAreaInsets();
 
   const [selectedBranch, setSelectedBranch] = useState<FamilyBranch | 'all'>(
     route.params?.defaultBranch || 'all',
@@ -1181,7 +1182,13 @@ export function TreeExportScreen() {
       </View>
 
       {/* Floating Bottom Action Bar */}
-      <View style={styles.bottomBar}>
+      <View
+        style={[
+          styles.bottomBar,
+          {
+            paddingBottom: Math.max(insets.bottom, 16) + 10,
+          },
+        ]}>
         <TouchableOpacity
           style={[styles.actionBtn, styles.saveBtn]}
           activeOpacity={0.8}
@@ -1613,11 +1620,17 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     flexDirection: 'row',
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     gap: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 8,
   },
   actionBtn: {
     flex: 1,
