@@ -16,6 +16,7 @@ import { listPersons } from '../../db/repositories/personRepository';
 import { PersonSummary, MemorialEvent } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
 import { Avatar, ScreenHeader, AppButton, useToast } from '../../components';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ScreenRouteProp = RouteProp<RootStackParamList, 'EventForm'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -94,7 +95,7 @@ export function EventFormScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader
         title="Thêm Ngày Giỗ / Sự Kiện"
         canGoBack
@@ -221,7 +222,7 @@ export function EventFormScreen() {
           size="lg"
         />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

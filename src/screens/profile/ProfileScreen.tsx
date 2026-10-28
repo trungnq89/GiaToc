@@ -18,6 +18,7 @@ import { colors, radius, spacing, typography } from '../../theme';
 import { Avatar, AppButton, Icon, useToast } from '../../components';
 import { persistAvatarImage } from '../../utils/avatarStorage';
 import { Gender } from '../../types';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export function ProfileScreen() {
   const user = useSessionStore(s => s.user);
@@ -236,8 +237,9 @@ export function ProfileScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Identity Card */}
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Identity Card */}
       <View style={styles.profileCard}>
         <View style={styles.avatarRow}>
           <TouchableOpacity
@@ -386,11 +388,16 @@ export function ProfileScreen() {
           </Text>
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,

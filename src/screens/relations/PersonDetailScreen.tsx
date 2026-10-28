@@ -17,6 +17,7 @@ import { Person } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
 import { Avatar, ScreenHeader, Icon, useToast } from '../../components';
 import { getBranchLabel } from '../../utils/kinshipCalculator';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ScreenRouteProp = RouteProp<RootStackParamList, 'PersonDetail'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -97,7 +98,7 @@ export function PersonDetailScreen() {
   const branchLabel = getBranchLabel(person.branch);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader
         title={person.name}
         canGoBack
@@ -314,7 +315,7 @@ export function PersonDetailScreen() {
           <Text style={styles.deleteBtnText}>Xóa người này khỏi danh bạ họ hàng</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

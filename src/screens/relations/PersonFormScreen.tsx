@@ -20,6 +20,7 @@ import { colors, radius, spacing, typography } from '../../theme';
 import { Avatar, ScreenHeader, AppButton, Icon, useToast } from '../../components';
 import { KINSHIP_PRESETS, RelationPreset } from '../../utils/kinshipCalculator';
 import { persistAvatarImage } from '../../utils/avatarStorage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ScreenRouteProp = RouteProp<RootStackParamList, 'PersonForm'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -168,7 +169,7 @@ export function PersonFormScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader
         title={isEditing ? 'Sửa Người Thân' : 'Thêm Người Thân'}
         canGoBack
@@ -481,7 +482,7 @@ export function PersonFormScreen() {
           style={styles.saveBtn}
         />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

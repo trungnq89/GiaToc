@@ -15,6 +15,7 @@ import { colors, radius, spacing, typography } from '../../theme';
 import { Avatar, AppButton, Icon } from '../../components';
 import { Gender } from '../../types';
 import { persistAvatarImage } from '../../utils/avatarStorage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export function OnboardingScreen() {
   const completeOnboarding = useSessionStore(s => s.completeOnboarding);
@@ -74,8 +75,9 @@ export function OnboardingScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.heroSection}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.heroSection}>
         <View style={styles.heroIconCircle}>
           <Icon name="family-tree" size={54} color={colors.primary} />
         </View>
@@ -191,11 +193,16 @@ export function OnboardingScreen() {
           style={styles.submitButton}
         />
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,

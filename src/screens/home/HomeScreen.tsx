@@ -17,6 +17,7 @@ import { listPersons } from '../../db/repositories/personRepository';
 import { PersonSummary, FamilyBranch } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
 import { Avatar, Chip, EmptyState, Icon } from '../../components';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -137,7 +138,7 @@ export function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Top Banner with "Tôi" shortcut */}
       <View style={styles.header}>
         <View style={styles.headerUser}>
@@ -233,7 +234,7 @@ export function HomeScreen() {
           />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -15,6 +15,7 @@ import { listAllMemorialEvents, deleteMemorialEvent } from '../../db/repositorie
 import { MemorialEvent } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
 import { EmptyState, Icon, useToast } from '../../components';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -106,7 +107,7 @@ export function EventsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View>
           <Text style={[typography.h2, styles.headerTitle]}>Ngày Giỗ & Sự Kiện</Text>
@@ -142,7 +143,7 @@ export function EventsScreen() {
           />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

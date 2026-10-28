@@ -14,6 +14,7 @@ import { listPersons } from '../../db/repositories/personRepository';
 import { PersonSummary, FamilyBranch } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
 import { Avatar, Chip, Icon } from '../../components';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -87,7 +88,7 @@ export function GenerationsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Branch selector */}
       <View style={styles.branchHeader}>
         <Text style={[typography.subtitle2, styles.branchTitle]}>Chọn Nhánh Họ Hàng:</Text>
@@ -186,7 +187,7 @@ export function GenerationsScreen() {
           </View>
         ))}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
