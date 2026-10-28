@@ -39,6 +39,7 @@ export interface FamilyUnit {
   id: string;
   primary: PersonSummary;
   spouse?: PersonSummary;
+  extraSpouses?: PersonSummary[];
   childIds: string[];
 }
 
@@ -108,13 +109,19 @@ export function TreeExportScreen() {
       all.forEach(p => personMap.set(p.id, p));
 
       // Build indexing maps
-      const spouseMap = new Map<string, string>();
+      const spouseMap = new Map<string, string[]>();
       const childrenMap = new Map<string, string[]>();
       const parentsMap = new Map<string, string[]>();
 
       for (const r of relRows) {
         if (r.relation_type === 'spouse') {
-          spouseMap.set(r.person_id, r.related_person_id);
+          const l1 = spouseMap.get(r.person_id) || [];
+          if (!l1.includes(r.related_person_id)) l1.push(r.related_person_id);
+          spouseMap.set(r.person_id, l1);
+
+          const l2 = spouseMap.get(r.related_person_id) || [];
+          if (!l2.includes(r.person_id)) l2.push(r.person_id);
+          spouseMap.set(r.related_person_id, l2);
         } else if (r.relation_type === 'parent') {
           // person_id has parent related_person_id
           const pList = parentsMap.get(r.person_id) || [];
@@ -159,29 +166,36 @@ export function TreeExportScreen() {
           if (visited.has(p.id)) continue;
           visited.add(p.id);
 
-          const spouseId = spouseMap.get(p.id);
-          const spouse = spouseId ? personMap.get(spouseId) : undefined;
+          const spouseIds = spouseMap.get(p.id) || [];
+          const matchedSpouses = spouseIds
+            .map(id => personMap.get(id))
+            .filter((sp): sp is PersonSummary => !!sp && genPersons.some(gp => gp.id === sp.id));
 
-          if (spouse && genPersons.some(gp => gp.id === spouseId)) {
-            visited.add(spouse.id);
+          if (matchedSpouses.length > 0) {
+            matchedSpouses.forEach(sp => visited.add(sp.id));
 
-            // Put male or blood relative first if applicable
-            const [primary, sp] =
-              p.gender === 'female' && spouse.gender === 'male'
-                ? [spouse, p]
-                : [p, spouse];
+            // Put male first if primary is female and one spouse is male
+            let primary = p;
+            let spouses = matchedSpouses;
+            if (p.gender === 'female' && matchedSpouses.some(sp => sp.gender === 'male')) {
+              const maleSp = matchedSpouses.find(sp => sp.gender === 'male')!;
+              primary = maleSp;
+              spouses = [p, ...matchedSpouses.filter(sp => sp.id !== maleSp.id)];
+            }
 
+            const allSpouseIds = spouses.map(s => s.id);
             const combinedChildren = Array.from(
               new Set([
                 ...(childrenMap.get(primary.id) || []),
-                ...(childrenMap.get(sp.id) || []),
+                ...spouses.flatMap(s => childrenMap.get(s.id) || []),
               ]),
             );
 
             rawUnits.push({
-              id: `couple_${primary.id}_${sp.id}`,
+              id: `couple_${primary.id}_${allSpouseIds.join('_')}`,
               primary,
-              spouse: sp,
+              spouse: spouses[0],
+              extraSpouses: spouses.slice(1),
               childIds: combinedChildren,
             });
           } else {
@@ -501,6 +515,27 @@ export function TreeExportScreen() {
 
           {/* Wife / Spouse Card if spouse exists */}
           {unit.spouse ? renderPersonCard(unit.spouse) : null}
+
+          {/* Extra Spouses (Vợ hai / Kế thất) */}
+          {unit.extraSpouses?.map(sp => (
+            <React.Fragment key={sp.id}>
+              <View style={styles.maritalConnector}>
+                <View style={[styles.maritalLine, { backgroundColor: themeColors.connector }]} />
+                <View
+                  style={[
+                    styles.maritalBadge,
+                    { backgroundColor: themeColors.badgeBg, borderColor: themeColors.border },
+                  ]}>
+                  <Text style={[styles.maritalIcon, { color: themeColors.border }]}>⚭</Text>
+                  <Text style={[styles.maritalLabel, { color: themeColors.badgeText }]}>
+                    Kế Thất
+                  </Text>
+                </View>
+                <View style={[styles.maritalLine, { backgroundColor: themeColors.connector }]} />
+              </View>
+              {renderPersonCard(sp)}
+            </React.Fragment>
+          ))}
         </View>
 
         {/* Downward stem descending from parents to children if they have descendants */}
@@ -656,19 +691,6 @@ export function TreeExportScreen() {
                   <Text style={[styles.posterSubtitle, { color: themeColors.subtitle }]}>
                     "Cây có cội mới trổ cành xanh ngọn • Nước có nguồn mới tỏa nhánh muôn sông"
                   </Text>
-                  <View style={styles.metaRow}>
-                    <Text style={[styles.metaText, { color: themeColors.subtitle }]}>
-                      Chủ hộ: <Text style={{ fontWeight: '700' }}>{user?.name || 'Tôi'}</Text>
-                    </Text>
-                    <Text style={[styles.metaDot, { color: themeColors.border }]}>•</Text>
-                    <Text style={[styles.metaText, { color: themeColors.subtitle }]}>
-                      Quy mô: <Text style={{ fontWeight: '700' }}>{tiers.length} Thế hệ ({totalCount} Nhân khẩu)</Text>
-                    </Text>
-                    <Text style={[styles.metaDot, { color: themeColors.border }]}>•</Text>
-                    <Text style={[styles.metaText, { color: themeColors.subtitle }]}>
-                      Ngày kết xuất: <Text style={{ fontWeight: '700' }}>{new Date().toLocaleDateString('vi-VN')}</Text>
-                    </Text>
-                  </View>
 
                   <View style={styles.ornamentRow}>
                     <Text style={[styles.ornamentText, { color: themeColors.border }]}>
@@ -793,6 +815,14 @@ export function TreeExportScreen() {
                     </Text>
                     <Text style={[styles.sealSub, { color: themeColors.subtitle }]}>
                       Ứng Dụng Sổ Họ Hàng Gia Tộc • Lưu Giữ Bản Sắc Cội Nguồn
+                    </Text>
+                  </View>
+
+                  {/* Export Date anchored to bottom right */}
+                  <View style={styles.exportDateBottomRight}>
+                    <Icon name="calendar-check-outline" size={13} color={themeColors.subtitle} />
+                    <Text style={[styles.exportDateText, { color: themeColors.subtitle }]}>
+                      Ngày kết xuất: <Text style={{ fontWeight: '700' }}>{new Date().toLocaleDateString('vi-VN')}</Text>
                     </Text>
                   </View>
                 </View>
@@ -1193,6 +1223,18 @@ const styles = StyleSheet.create({
   sealSub: {
     fontSize: 11,
     marginTop: 4,
+    fontStyle: 'italic',
+  },
+  exportDateBottomRight: {
+    alignSelf: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: spacing.md,
+    paddingRight: spacing.md,
+  },
+  exportDateText: {
+    fontSize: 11,
     fontStyle: 'italic',
   },
   bottomBar: {
