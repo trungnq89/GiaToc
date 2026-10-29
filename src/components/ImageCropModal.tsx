@@ -9,9 +9,9 @@ import {
   PanResponder,
   ActivityIndicator,
   useWindowDimensions,
-  SafeAreaView,
   Platform,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 import { colors, radius, spacing, typography } from '../theme';
 import { Icon } from './Icon';
@@ -190,7 +190,7 @@ export function ImageCropModal({
       animationType="slide"
       transparent={false}
       onRequestClose={onClose}>
-      <SafeAreaView style={styles.modalContainer}>
+      <SafeAreaView style={styles.modalContainer} edges={['top', 'bottom']}>
         {/* Modal Top Bar */}
         <View style={styles.topBar}>
           <TouchableOpacity

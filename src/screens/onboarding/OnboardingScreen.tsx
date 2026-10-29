@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.xl,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: spacing.xxxl + 16,
   },
   heroSection: {
     alignItems: 'center',

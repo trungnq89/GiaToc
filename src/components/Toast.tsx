@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from './Icon';
 import { colors, radius, spacing, typography } from '../theme';
 
@@ -37,6 +38,7 @@ const COLORS: Record<ToastKind, string> = {
 };
 
 export function ToastProvider({ children }: PropsWithChildren) {
+  const insets = useSafeAreaInsets();
   const [toast, setToast] = useState<ToastState | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,7 +72,14 @@ export function ToastProvider({ children }: PropsWithChildren) {
       {toast ? (
         <Animated.View
           pointerEvents="none"
-          style={[styles.toast, { opacity, backgroundColor: colors.card }]}>
+          style={[
+            styles.toast,
+            {
+              opacity,
+              backgroundColor: colors.card,
+              bottom: Math.max(insets.bottom, 16) + 72,
+            },
+          ]}>
           <Icon name={ICONS[toast.kind]} size={22} color={COLORS[toast.kind]} />
           <Text style={[typography.body1, styles.text]}>{toast.message}</Text>
         </Animated.View>
@@ -92,7 +101,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
-    bottom: spacing.xxl,
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,

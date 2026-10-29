@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: spacing.xxxl + 16,
     gap: spacing.sm,
   },
   personCard: {

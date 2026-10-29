@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PersonSummary, FamilyBranch } from '../types';
 import { listPersons } from '../db/repositories/personRepository';
 import { colors, radius, spacing, typography } from '../theme';
@@ -42,6 +43,7 @@ export function RelationPickerModal({
   onClear,
   onClose,
 }: RelationPickerModalProps) {
+  const insets = useSafeAreaInsets();
   const [persons, setPersons] = useState<PersonSummary[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<FamilyBranch | 'all'>('all');
@@ -100,7 +102,7 @@ export function RelationPickerModal({
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+        <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerTitleWrap}>

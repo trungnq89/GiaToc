@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: spacing.xxxl + 16,
     gap: spacing.lg,
   },
   card: {

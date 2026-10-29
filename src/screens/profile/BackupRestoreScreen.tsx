@@ -244,7 +244,7 @@ export function BackupRestoreScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScreenHeader
         title="Sao Lưu & Phục Hồi"
         canGoBack
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: spacing.xxxl + 16,
     gap: spacing.lg,
   },
   tabContainer: {
