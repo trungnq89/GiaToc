@@ -153,7 +153,9 @@ export function InteractiveTreeScreen() {
   const [unitChildrenMapState, setUnitChildrenMapState] = useState<Map<string, FamilyUnit[]>>(
     new Map(),
   );
+  const [unitParentMapState, setUnitParentMapState] = useState<Map<string, string>>(new Map());
   const [rootUnitsState, setRootUnitsState] = useState<FamilyUnit[]>([]);
+  const [userUnitIdState, setUserUnitIdState] = useState<string | null>(null);
 
   // Expanded nodes set
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
@@ -164,12 +166,25 @@ export function InteractiveTreeScreen() {
   // Selected person modal state
   const [selectedPerson, setSelectedPerson] = useState<PersonSummary | null>(null);
 
-  // Refs for ScrollViews
+  // Refs for ScrollViews and scroll tracking
   const horizontalScrollRef = useRef<any>(null);
   const verticalScrollRef = useRef<any>(null);
+  const currentScrollXRef = useRef<number>(0);
+  const currentScrollYRef = useRef<number>(0);
 
   // Track coordinates of user's node to autofocus
   const userCoordinatesRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Chỉ autofocus vào user 1 lần khi load màn hình / đổi nhánh, không nhảy khi mở/thu gọn node
+  const hasFocusedRef = useRef<boolean>(false);
+  const pendingFocusUserRef = useRef<boolean>(false);
+
+  // Lưu anchor của node vừa được bấm mở/thu gọn để giữ ổn định vị trí trên màn hình
+  const pendingAnchorRef = useRef<{
+    unitId: string;
+    oldCenterX: number;
+    oldScrollX: number;
+  } | null>(null);
 
   // Load tree data from database
   const loadTreeData = useCallback(async () => {
@@ -324,6 +339,20 @@ export function InteractiveTreeScreen() {
         }
       });
 
+      let foundUserUnitId: string | null = null;
+      for (const u of allUnits) {
+        if (
+          user &&
+          (u.primary.id === user.id ||
+            u.spouse?.id === user.id ||
+            u.primary.name === user.name)
+        ) {
+          foundUserUnitId = u.id;
+          break;
+        }
+      }
+      setUserUnitIdState(foundUserUnitId);
+      setUnitParentMapState(unitParentMap);
       setAllUnitsState(allUnits);
       setUnitChildrenMapState(unitChildrenMap);
       setRootUnitsState(rootUnits);
@@ -425,18 +454,82 @@ export function InteractiveTreeScreen() {
     return Math.max(windowHeight, 220 + totalGenerations * ROW_HEIGHT + 140);
   }, [generationList.length, windowHeight]);
 
-  // Toggle một node đóng hoặc mở
-  const toggleNode = useCallback((unitId: string) => {
-    setExpandedNodeIds(prev => {
-      const next = new Set(prev);
-      if (next.has(unitId)) {
-        next.delete(unitId);
-      } else {
-        next.add(unitId);
+  // Helper tính tọa độ X trung tâm của một FamilyUnit / node trong canvas
+  const getNodeCenterX = useCallback(
+    (roots: InteractiveTreeNode[], unitId: string): number | null => {
+      let runningX = 40;
+      for (const root of roots) {
+        const searchNode = (node: InteractiveTreeNode, curX: number): number | null => {
+          const unitW = getFamilyUnitWidth(node.unit);
+          const unitCenterX = curX + (node.subtreeWidth - unitW) / 2 + unitW / 2;
+          if (node.id === unitId || node.unit.primary.id === unitId) {
+            return unitCenterX;
+          }
+          if (node.isExpanded && node.children.length > 0) {
+            const childrenW =
+              node.children.reduce((sum, c) => sum + c.subtreeWidth, 0) +
+              (node.children.length - 1) * SIBLING_GAP;
+            let childX = curX + (node.subtreeWidth - childrenW) / 2;
+            for (const c of node.children) {
+              const found = searchNode(c, childX);
+              if (found !== null) return found;
+              childX += c.subtreeWidth + SIBLING_GAP;
+            }
+          }
+          return null;
+        };
+
+        const found = searchNode(root, runningX);
+        if (found !== null) return found;
+        runningX += root.subtreeWidth + ROOT_GAP;
       }
-      return next;
-    });
-  }, []);
+      return null;
+    },
+    [],
+  );
+
+  // Toggle một node đóng hoặc mở với cơ chế ghi nhớ tọa độ màn hình
+  const toggleNode = useCallback(
+    (unitId: string) => {
+      // Lưu lại tọa độ X của node trước khi cây được tính toán lại
+      const oldCenterX = getNodeCenterX(treeRoots, unitId);
+      if (oldCenterX !== null) {
+        pendingAnchorRef.current = {
+          unitId,
+          oldCenterX,
+          oldScrollX: currentScrollXRef.current,
+        };
+      }
+
+      setExpandedNodeIds(prev => {
+        const next = new Set(prev);
+        if (next.has(unitId)) {
+          next.delete(unitId);
+        } else {
+          next.add(unitId);
+        }
+        return next;
+      });
+    },
+    [treeRoots, getNodeCenterX],
+  );
+
+  // Giữ nguyên vị trí hiển thị của node vừa được bấm mở/thu gọn, triệt tiêu hoàn toàn hiện tượng nhảy màn hình
+  useEffect(() => {
+    if (!pendingAnchorRef.current) return;
+    const anchor = pendingAnchorRef.current;
+    pendingAnchorRef.current = null;
+
+    if (anchor.oldCenterX !== null) {
+      const newCenterX = getNodeCenterX(treeRoots, anchor.unitId);
+      if (newCenterX !== null) {
+        const deltaX = (newCenterX - anchor.oldCenterX) * zoomLevel;
+        const targetScrollX = Math.max(0, anchor.oldScrollX + deltaX);
+        horizontalScrollRef.current?.scrollTo({ x: targetScrollX, animated: false });
+        currentScrollXRef.current = targetScrollX;
+      }
+    }
+  }, [treeRoots, getNodeCenterX, zoomLevel]);
 
   // Mở rộng toàn bộ cây
   const handleExpandAll = useCallback(() => {
@@ -464,6 +557,27 @@ export function InteractiveTreeScreen() {
   const focusOnUser = useCallback(
     (animated = true) => {
       if (!user) return;
+
+      // Nếu tổ tiên của Tôi đang bị thu gọn, tự động mở lại các node cha/tổ tiên dẫn đến Tôi
+      if (userUnitIdState) {
+        let curr = unitParentMapState.get(userUnitIdState);
+        const toExpand: string[] = [];
+        while (curr) {
+          if (!expandedNodeIds.has(curr)) {
+            toExpand.push(curr);
+          }
+          curr = unitParentMapState.get(curr);
+        }
+        if (toExpand.length > 0) {
+          pendingFocusUserRef.current = true;
+          setExpandedNodeIds(prev => {
+            const next = new Set(prev);
+            toExpand.forEach(id => next.add(id));
+            return next;
+          });
+          return;
+        }
+      }
 
       // Tìm tọa độ node của user
       const HEADER_Y = 180;
@@ -514,15 +628,41 @@ export function InteractiveTreeScreen() {
       const scrollX = Math.max(0, targetX * zoomLevel - windowWidth / 2);
       const scrollY = Math.max(0, targetY * zoomLevel - windowHeight / 2 + 100);
 
+      currentScrollXRef.current = scrollX;
+      currentScrollYRef.current = scrollY;
       horizontalScrollRef.current?.scrollTo({ x: scrollX, animated });
       verticalScrollRef.current?.scrollTo({ y: scrollY, animated });
     },
-    [user, canvasWidth, maxGen, userGen, treeRoots, zoomLevel, windowWidth, windowHeight],
+    [
+      user,
+      userUnitIdState,
+      unitParentMapState,
+      expandedNodeIds,
+      canvasWidth,
+      maxGen,
+      userGen,
+      treeRoots,
+      zoomLevel,
+      windowWidth,
+      windowHeight,
+    ],
   );
 
-  // Focus vào người dùng lần đầu khi dữ liệu đã sẵn sàng
+  // Cuộn focus vào Tôi sau khi cây đã bung các node tổ tiên
   useEffect(() => {
-    if (!loading && treeRoots.length > 0) {
+    if (pendingFocusUserRef.current && treeRoots.length > 0) {
+      pendingFocusUserRef.current = false;
+      const timer = setTimeout(() => {
+        focusOnUser(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [treeRoots, focusOnUser]);
+
+  // Focus vào người dùng DUY NHẤT một lần khi dữ liệu cây ban đầu sẵn sàng
+  useEffect(() => {
+    if (!loading && treeRoots.length > 0 && !hasFocusedRef.current) {
+      hasFocusedRef.current = true;
       const timer = setTimeout(() => {
         focusOnUser(false);
       }, 250);
@@ -848,25 +988,37 @@ export function InteractiveTreeScreen() {
           <Chip
             label="Tất cả các nhánh"
             selected={selectedBranch === 'all'}
-            onPress={() => setSelectedBranch('all')}
+            onPress={() => {
+              hasFocusedRef.current = false;
+              setSelectedBranch('all');
+            }}
           />
           <Chip
             label="Bên Nội"
             selected={selectedBranch === 'noi'}
             activeColor={colors.branchNoi}
-            onPress={() => setSelectedBranch('noi')}
+            onPress={() => {
+              hasFocusedRef.current = false;
+              setSelectedBranch('noi');
+            }}
           />
           <Chip
             label="Bên Ngoại"
             selected={selectedBranch === 'ngoai'}
             activeColor={colors.branchNgoai}
-            onPress={() => setSelectedBranch('ngoai')}
+            onPress={() => {
+              hasFocusedRef.current = false;
+              setSelectedBranch('ngoai');
+            }}
           />
           <Chip
             label="Bên Vợ / Chồng"
             selected={selectedBranch === 'vo_chong'}
             activeColor={colors.branchVoChong}
-            onPress={() => setSelectedBranch('vo_chong')}
+            onPress={() => {
+              hasFocusedRef.current = false;
+              setSelectedBranch('vo_chong');
+            }}
           />
         </ScrollView>
 
@@ -912,12 +1064,20 @@ export function InteractiveTreeScreen() {
             ref={horizontalScrollRef}
             horizontal
             showsHorizontalScrollIndicator={true}
+            scrollEventThrottle={16}
+            onScroll={e => {
+              currentScrollXRef.current = e.nativeEvent.contentOffset.x;
+            }}
             contentContainerStyle={{
               width: Math.max(windowWidth, Math.round(canvasWidth * zoomLevel)),
             }}>
             <ScrollView
               ref={verticalScrollRef}
               showsVerticalScrollIndicator={true}
+              scrollEventThrottle={16}
+              onScroll={e => {
+                currentScrollYRef.current = e.nativeEvent.contentOffset.y;
+              }}
               contentContainerStyle={{
                 height: Math.round(canvasHeight * zoomLevel),
               }}>
