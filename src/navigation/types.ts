@@ -25,5 +25,8 @@ export type RootStackParamList = {
   TreeExport: {
     defaultBranch?: FamilyBranch;
   };
+  InteractiveTree: {
+    defaultBranch?: FamilyBranch;
+  };
   BackupRestore: undefined;
 };

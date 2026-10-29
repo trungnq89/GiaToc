@@ -40,9 +40,9 @@ export function OnboardingScreen() {
     try {
       const res = await launchImageLibrary({
         mediaType: 'photo',
-        quality: 0.9,
-        maxWidth: 1200,
-        maxHeight: 1200,
+        quality: 0.8,
+        maxWidth: 800,
+        maxHeight: 800,
       });
 
       if (res.assets && res.assets.length > 0 && res.assets[0].uri) {

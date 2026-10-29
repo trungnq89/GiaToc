@@ -120,18 +120,28 @@ export function GenerationsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Top action header */}
       <View style={styles.topActionHeader}>
-        <View>
+        <View style={{ flex: 1, marginRight: spacing.sm }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>Phả Hệ Gia Tộc</Text>
-          <Text style={[typography.h3, { color: colors.text }]}>Sơ Đồ 6 Thế Hệ</Text>
+          <Text style={[typography.h3, { color: colors.text }]} numberOfLines={1}>Sơ Đồ 6 Thế Hệ</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.exportBtn}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('TreeExport', { defaultBranch: activeBranch })}>
-          <Icon name="file-image-outline" size={18} color="#FFF" />
-          <Text style={[typography.button, styles.exportBtnText]}>Xuất ảnh</Text>
-        </TouchableOpacity>
+        <View style={styles.headerBtnGroup}>
+          <TouchableOpacity
+            style={styles.viewTreeBtn}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('InteractiveTree', { defaultBranch: activeBranch })}>
+            <Icon name="family-tree" size={16} color="#FFF" />
+            <Text style={[typography.button, styles.viewTreeBtnText]}>Xem cây phả</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.exportBtn}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('TreeExport', { defaultBranch: activeBranch })}>
+            <Icon name="file-image-outline" size={16} color={colors.primary} />
+            <Text style={[typography.button, styles.exportBtnText]}>Xuất ảnh</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Branch selector */}
@@ -357,17 +367,39 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs,
     backgroundColor: colors.card,
   },
+  headerBtnGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  viewTreeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 7,
+    borderRadius: radius.full,
+  },
+  viewTreeBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   exportBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    gap: 4,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 6,
     borderRadius: radius.full,
   },
   exportBtnText: {
-    color: '#FFF',
-    fontSize: 13,
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

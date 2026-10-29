@@ -8,6 +8,7 @@ import { PersonDetailScreen } from '../screens/relations/PersonDetailScreen';
 import { PersonFormScreen } from '../screens/relations/PersonFormScreen';
 import { EventFormScreen } from '../screens/events/EventFormScreen';
 import { TreeExportScreen } from '../screens/export/TreeExportScreen';
+import { InteractiveTreeScreen } from '../screens/relations/InteractiveTreeScreen';
 import { BackupRestoreScreen } from '../screens/profile/BackupRestoreScreen';
 import { useSessionStore } from '../store/sessionStore';
 import { colors } from '../theme';
@@ -51,6 +52,10 @@ export function RootNavigator() {
           <Stack.Screen
             name="TreeExport"
             component={TreeExportScreen}
+          />
+          <Stack.Screen
+            name="InteractiveTree"
+            component={InteractiveTreeScreen}
           />
           <Stack.Screen
             name="BackupRestore"

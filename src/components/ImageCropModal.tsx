@@ -165,9 +165,9 @@ export function ImageCropModal({
       setIsCapturing(true);
       const uri = await captureRef(cropRef, {
         format: 'jpg',
-        quality: 0.9,
-        width: 400,
-        height: 400,
+        quality: 0.75,
+        width: 320,
+        height: 320,
         result: 'tmpfile',
       });
 

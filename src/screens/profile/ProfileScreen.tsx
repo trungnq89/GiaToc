@@ -59,9 +59,9 @@ export function ProfileScreen() {
     try {
       const res = await launchImageLibrary({
         mediaType: 'photo',
-        quality: 0.9,
-        maxWidth: 1200,
-        maxHeight: 1200,
+        quality: 0.8,
+        maxWidth: 800,
+        maxHeight: 800,
       });
 
       if (res.assets && res.assets.length > 0 && res.assets[0].uri) {
@@ -255,6 +255,22 @@ export function ProfileScreen() {
       {/* Quick Tools */}
       <View style={styles.card}>
         <Text style={[typography.subtitle1, styles.cardTitle]}>Tiện Ích & Dữ Liệu</Text>
+
+        <TouchableOpacity
+          style={styles.settingRow}
+          onPress={() => navigation.navigate('InteractiveTree', {})}
+          activeOpacity={0.7}>
+          <View style={[styles.settingIcon, { backgroundColor: '#EFF6FF' }]}>
+            <Icon name="family-tree" size={20} color={colors.primary} />
+          </View>
+          <View style={styles.settingText}>
+            <Text style={[typography.subtitle2, styles.settingTitle]}>Xem cây gia phả (Tương tác)</Text>
+            <Text style={[typography.caption, styles.settingDesc]}>
+              Mở rộng từng nhánh thế hệ, tương tác và định vị vị trí của bạn
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={20} color={colors.border} />
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.settingRow}
