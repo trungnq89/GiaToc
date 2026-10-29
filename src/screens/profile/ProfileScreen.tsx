@@ -272,6 +272,22 @@ export function ProfileScreen() {
           <Icon name="chevron-right" size={20} color={colors.border} />
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.settingRow}
+          onPress={() => navigation.navigate('BackupRestore')}
+          activeOpacity={0.7}>
+          <View style={[styles.settingIcon, { backgroundColor: colors.secondaryLight }]}>
+            <Icon name="archive-sync-outline" size={20} color={colors.secondary} />
+          </View>
+          <View style={styles.settingText}>
+            <Text style={[typography.subtitle2, styles.settingTitle]}>Sao lưu & Phục hồi (File ZIP)</Text>
+            <Text style={[typography.caption, styles.settingDesc]}>
+              Đóng gói toàn bộ gia phả & ảnh vào file zip hoặc khôi phục dữ liệu
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={20} color={colors.border} />
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.settingRow} onPress={handleSeedSampleData} activeOpacity={0.7}>
           <View style={[styles.settingIcon, { backgroundColor: colors.primarySoft }]}>
             <Icon name="database-plus-outline" size={20} color={colors.primary} />

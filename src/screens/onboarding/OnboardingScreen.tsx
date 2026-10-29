@@ -8,6 +8,9 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../navigation/types';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useSessionStore } from '../../store/sessionStore';
 import { saveUserProfile } from '../../db/repositories/userRepository';
@@ -17,7 +20,10 @@ import { Gender } from '../../types';
 import { persistAvatarImage } from '../../utils/avatarStorage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export function OnboardingScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const completeOnboarding = useSessionStore(s => s.completeOnboarding);
 
   const [name, setName] = useState('');
@@ -196,6 +202,16 @@ export function OnboardingScreen() {
           size="lg"
           style={styles.submitButton}
         />
+
+        <TouchableOpacity
+          style={styles.restoreOptionButton}
+          onPress={() => navigation.navigate('BackupRestore')}
+          activeOpacity={0.7}>
+          <Icon name="archive-arrow-up-outline" size={17} color={colors.primary} />
+          <Text style={styles.restoreOptionText}>
+            Hoặc khôi phục từ file sao lưu ZIP
+          </Text>
+        </TouchableOpacity>
       </View>
       </ScrollView>
 
@@ -360,5 +376,18 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: spacing.sm,
+  },
+  restoreOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    marginTop: spacing.xs,
+    gap: spacing.xs,
+  },
+  restoreOptionText: {
+    ...typography.subtitle2,
+    color: colors.primary,
+    fontWeight: '600',
   },
 });
