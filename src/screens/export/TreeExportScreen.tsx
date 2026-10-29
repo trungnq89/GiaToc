@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   useWindowDimensions,
+  PanResponder,
 } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -241,6 +242,62 @@ export function TreeExportScreen() {
   const handleToggleFit = () => {
     setZoomLevel(prev => (Math.abs(prev - fitZoom) < 0.05 ? 1.0 : fitZoom));
   };
+
+  const zoomLevelRef = useRef<number>(zoomLevel);
+  const initialPinchDistRef = useRef<number>(0);
+  const initialPinchZoomRef = useRef<number>(zoomLevel);
+
+  useEffect(() => {
+    zoomLevelRef.current = zoomLevel;
+  }, [zoomLevel]);
+
+  // Two-finger pinch-to-zoom gesture handler (zoom in, zoom out with gesture)
+  const pinchPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponderCapture: evt => {
+          return !!(evt.nativeEvent.touches && evt.nativeEvent.touches.length >= 2);
+        },
+        onMoveShouldSetPanResponderCapture: evt => {
+          return !!(evt.nativeEvent.touches && evt.nativeEvent.touches.length >= 2);
+        },
+        onStartShouldSetPanResponder: evt => {
+          return !!(evt.nativeEvent.touches && evt.nativeEvent.touches.length >= 2);
+        },
+        onMoveShouldSetPanResponder: evt => {
+          return !!(evt.nativeEvent.touches && evt.nativeEvent.touches.length >= 2);
+        },
+        onPanResponderGrant: evt => {
+          const touches = evt.nativeEvent.touches;
+          if (touches && touches.length >= 2) {
+            const dx = touches[0].pageX - touches[1].pageX;
+            const dy = touches[0].pageY - touches[1].pageY;
+            initialPinchDistRef.current = Math.sqrt(dx * dx + dy * dy);
+            initialPinchZoomRef.current = zoomLevelRef.current;
+          }
+        },
+        onPanResponderMove: evt => {
+          const touches = evt.nativeEvent.touches;
+          if (touches && touches.length >= 2 && initialPinchDistRef.current > 0) {
+            const dx = touches[0].pageX - touches[1].pageX;
+            const dy = touches[0].pageY - touches[1].pageY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const scale = dist / initialPinchDistRef.current;
+            const targetZoom = initialPinchZoomRef.current * scale;
+            const clamped = Math.min(2.0, Math.max(0.12, targetZoom));
+            setZoomLevel(Math.round(clamped * 100) / 100);
+          }
+        },
+        onPanResponderRelease: () => {
+          initialPinchDistRef.current = 0;
+        },
+        onPanResponderTerminate: () => {
+          initialPinchDistRef.current = 0;
+        },
+        onPanResponderTerminationRequest: () => false,
+      }),
+    [],
+  );
 
   const loadTreeData = useCallback(async () => {
     try {
@@ -928,10 +985,13 @@ export function TreeExportScreen() {
       </View>
 
       {/* Main Preview Canvas with Two-Way Pan & Zoom */}
-      <View style={styles.previewContainer}>
+      <View style={styles.previewContainer} {...pinchPanResponder.panHandlers}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={true}
+          maximumZoomScale={2.0}
+          minimumZoomScale={0.12}
+          pinchGestureEnabled={true}
           contentContainerStyle={[
             styles.horizontalScrollContent,
             { minWidth: Math.max(windowWidth, Math.round(canvasWidth * zoomLevel + 32)) },

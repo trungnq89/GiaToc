@@ -7,3 +7,4 @@ export * from './ScreenHeader';
 export * from './EmptyState';
 export * from './Toast';
 export * from './RelationPickerModal';
+export * from './ImageCropModal';

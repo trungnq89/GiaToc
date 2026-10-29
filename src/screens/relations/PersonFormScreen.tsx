@@ -17,7 +17,7 @@ import { createPerson, updatePerson, getPersonById, listPersons } from '../../db
 import { getDirectRelatives, linkRelatives, removeRelationship } from '../../db/repositories/relationshipRepository';
 import { Gender, FamilyBranch, PersonSummary } from '../../types';
 import { colors, radius, spacing, typography } from '../../theme';
-import { Avatar, ScreenHeader, AppButton, Icon, useToast, RelationPickerModal } from '../../components';
+import { Avatar, ScreenHeader, AppButton, Icon, useToast, RelationPickerModal, ImageCropModal } from '../../components';
 import { KINSHIP_PRESETS, RelationPreset, getBranchLabel } from '../../utils/kinshipCalculator';
 import { persistAvatarImage } from '../../utils/avatarStorage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -56,6 +56,10 @@ export function PersonFormScreen() {
   const [initialSpouseId, setInitialSpouseId] = useState<string | undefined>(undefined);
   const [showParentModal, setShowParentModal] = useState(false);
   const [showSpouseModal, setShowSpouseModal] = useState(false);
+
+  // Avatar Cropping state
+  const [pendingCropUri, setPendingCropUri] = useState<string | null>(null);
+  const [isCropModalVisible, setIsCropModalVisible] = useState(false);
 
   const [saving, setSaving] = useState(false);
 
@@ -99,14 +103,14 @@ export function PersonFormScreen() {
     try {
       const res = await launchImageLibrary({
         mediaType: 'photo',
-        quality: 0.8,
-        maxWidth: 800,
-        maxHeight: 800,
+        quality: 0.9,
+        maxWidth: 1200,
+        maxHeight: 1200,
       });
 
       if (res.assets && res.assets.length > 0 && res.assets[0].uri) {
-        const localUri = await persistAvatarImage(res.assets[0].uri);
-        setAvatarUri(localUri);
+        setPendingCropUri(res.assets[0].uri);
+        setIsCropModalVisible(true);
       }
     } catch (e) {
       console.warn('Pick avatar failed:', e);
@@ -623,6 +627,17 @@ export function PersonFormScreen() {
         onSelect={p => setSelectedSpouse(p)}
         onClear={() => setSelectedSpouse(null)}
         onClose={() => setShowSpouseModal(false)}
+      />
+
+      {/* Modal Cắt ảnh đại diện */}
+      <ImageCropModal
+        visible={isCropModalVisible}
+        imageUri={pendingCropUri}
+        onClose={() => setIsCropModalVisible(false)}
+        onCropDone={async croppedUri => {
+          const localUri = await persistAvatarImage(croppedUri);
+          setAvatarUri(localUri);
+        }}
       />
     </SafeAreaView>
   );

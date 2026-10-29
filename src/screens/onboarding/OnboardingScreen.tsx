@@ -12,7 +12,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { useSessionStore } from '../../store/sessionStore';
 import { saveUserProfile } from '../../db/repositories/userRepository';
 import { colors, radius, spacing, typography } from '../../theme';
-import { Avatar, AppButton, Icon } from '../../components';
+import { Avatar, AppButton, Icon, ImageCropModal } from '../../components';
 import { Gender } from '../../types';
 import { persistAvatarImage } from '../../utils/avatarStorage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,18 +26,22 @@ export function OnboardingScreen() {
   const [avatarUri, setAvatarUri] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
 
+  // Avatar cropping state
+  const [pendingCropUri, setPendingCropUri] = useState<string | null>(null);
+  const [isCropModalVisible, setIsCropModalVisible] = useState(false);
+
   const handlePickAvatar = async () => {
     try {
       const res = await launchImageLibrary({
         mediaType: 'photo',
-        quality: 0.8,
-        maxWidth: 800,
-        maxHeight: 800,
+        quality: 0.9,
+        maxWidth: 1200,
+        maxHeight: 1200,
       });
 
       if (res.assets && res.assets.length > 0 && res.assets[0].uri) {
-        const localUri = await persistAvatarImage(res.assets[0].uri);
-        setAvatarUri(localUri);
+        setPendingCropUri(res.assets[0].uri);
+        setIsCropModalVisible(true);
       }
     } catch (e) {
       console.warn('Pick avatar error:', e);
@@ -194,6 +198,17 @@ export function OnboardingScreen() {
         />
       </View>
       </ScrollView>
+
+      {/* Modal Cắt ảnh đại diện */}
+      <ImageCropModal
+        visible={isCropModalVisible}
+        imageUri={pendingCropUri}
+        onClose={() => setIsCropModalVisible(false)}
+        onCropDone={async croppedUri => {
+          const localUri = await persistAvatarImage(croppedUri);
+          setAvatarUri(localUri);
+        }}
+      />
     </SafeAreaView>
   );
 }

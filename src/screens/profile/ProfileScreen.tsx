@@ -18,7 +18,7 @@ import { getFamilyStats, FamilyStats } from '../../db/repositories/personReposit
 import { execute } from '../../db/database';
 import { seed6GenerationsFamily } from '../../db/seed6Generations';
 import { colors, radius, spacing, typography } from '../../theme';
-import { Avatar, AppButton, Icon, useToast } from '../../components';
+import { Avatar, AppButton, Icon, useToast, ImageCropModal } from '../../components';
 import { persistAvatarImage } from '../../utils/avatarStorage';
 import { Gender } from '../../types';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,6 +45,10 @@ export function ProfileScreen() {
     deceased: 0,
   });
 
+  // Avatar cropping state
+  const [pendingCropUri, setPendingCropUri] = useState<string | null>(null);
+  const [isCropModalVisible, setIsCropModalVisible] = useState(false);
+
   useFocusEffect(
     useCallback(() => {
       getFamilyStats().then(setStats).catch(console.warn);
@@ -55,14 +59,14 @@ export function ProfileScreen() {
     try {
       const res = await launchImageLibrary({
         mediaType: 'photo',
-        quality: 0.8,
-        maxWidth: 800,
-        maxHeight: 800,
+        quality: 0.9,
+        maxWidth: 1200,
+        maxHeight: 1200,
       });
 
       if (res.assets && res.assets.length > 0 && res.assets[0].uri) {
-        const localUri = await persistAvatarImage(res.assets[0].uri);
-        setAvatarUri(localUri);
+        setPendingCropUri(res.assets[0].uri);
+        setIsCropModalVisible(true);
       }
     } catch (e) {
       console.warn('Pick avatar error:', e);
@@ -308,6 +312,17 @@ export function ProfileScreen() {
         </View>
       </View>
       </ScrollView>
+
+      {/* Modal Cắt ảnh đại diện */}
+      <ImageCropModal
+        visible={isCropModalVisible}
+        imageUri={pendingCropUri}
+        onClose={() => setIsCropModalVisible(false)}
+        onCropDone={async croppedUri => {
+          const localUri = await persistAvatarImage(croppedUri);
+          setAvatarUri(localUri);
+        }}
+      />
     </SafeAreaView>
   );
 }
