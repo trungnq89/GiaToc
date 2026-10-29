@@ -847,6 +847,8 @@ export function TreeExportScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScreenHeader
         title="Xuất Cây Gia Phả"
+        canGoBack
+        onGoBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('MainTabs' as any))}
         rightAction={{
           icon: 'share-variant',
           onPress: () => handleShareFile(),
