@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
+import * as FS from '@dr.pogodin/react-native-fs';
 import { colors, radius, spacing, typography } from '../theme';
 import { Icon } from './Icon';
 
@@ -54,6 +55,7 @@ export function ImageCropModal({
   const initialDistanceRef = useRef<number | null>(null);
   const initialScaleRef = useRef<number>(1.0);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const lastTapTimeRef = useRef<number>(0);
 
   // Reset transforms whenever a new image is loaded
   useEffect(() => {
@@ -85,7 +87,7 @@ export function ImageCropModal({
     }
   }, [visible, imageUri, cropSize]);
 
-  // PanResponder for 1-finger drag and 2-finger pinch
+  // PanResponder for 1-finger drag, double-tap reset, and 2-finger pinch
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -94,6 +96,16 @@ export function ImageCropModal({
         onPanResponderGrant: evt => {
           const touches = evt.nativeEvent.touches;
           if (touches.length === 1) {
+            const now = Date.now();
+            if (now - lastTapTimeRef.current < 300) {
+              // Double tap detected: reset zoom & center
+              setPan({ x: 0, y: 0 });
+              setScale(1.0);
+              lastTapTimeRef.current = 0;
+              return;
+            }
+            lastTapTimeRef.current = now;
+
             dragStartRef.current = {
               x: touches[0].pageX - panRef.current.x,
               y: touches[0].pageY - panRef.current.y,
@@ -163,7 +175,7 @@ export function ImageCropModal({
 
     try {
       setIsCapturing(true);
-      const uri = await captureRef(cropRef, {
+      const tmpUri = await captureRef(cropRef, {
         format: 'jpg',
         quality: 0.75,
         width: 320,
@@ -171,8 +183,32 @@ export function ImageCropModal({
         result: 'tmpfile',
       });
 
-      if (uri) {
-        onCropDone(uri);
+      if (tmpUri) {
+        // Lưu ảnh đại diện vào thư mục bền vững DocumentDirectoryPath/avatars
+        const avatarDir = `${FS.DocumentDirectoryPath}/avatars`;
+        const exists = await FS.exists(avatarDir);
+        if (!exists) {
+          await FS.mkdir(avatarDir);
+        }
+
+        const filename = `avatar_${Date.now()}.jpg`;
+        const persistentPath = `${avatarDir}/${filename}`;
+        let cleanTmp = tmpUri;
+        if (cleanTmp.startsWith('file://')) {
+          cleanTmp = cleanTmp.replace('file://', '');
+        }
+
+        await FS.copyFile(cleanTmp, persistentPath);
+
+        // Xóa tệp tạm để tiết kiệm bộ nhớ cache
+        try {
+          await FS.unlink(cleanTmp);
+        } catch {
+          // ignore unlink error
+        }
+
+        const finalUri = `file://${persistentPath}`;
+        onCropDone(finalUri);
         onClose();
       }
     } catch (e) {

@@ -9,6 +9,9 @@ import {
   useWindowDimensions,
   Modal,
   PanResponder,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -131,6 +134,10 @@ function getGenerationMeta(gen: number): GenerationMetadata {
     rankTitle: gen > 0 ? `BẬC TIỀN NHÂN (${gen})` : `BẬC HẬU DUỆ (${gen})`,
     description: 'Thành viên gia tộc',
   };
+}
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 export function InteractiveTreeScreen() {
@@ -501,6 +508,13 @@ export function InteractiveTreeScreen() {
         };
       }
 
+      LayoutAnimation.configureNext({
+        duration: 250,
+        create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+        update: { type: LayoutAnimation.Types.easeInEaseOut },
+        delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+      });
+
       setExpandedNodeIds(prev => {
         const next = new Set(prev);
         if (next.has(unitId)) {
@@ -533,6 +547,7 @@ export function InteractiveTreeScreen() {
 
   // Mở rộng toàn bộ cây
   const handleExpandAll = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const allWithChildren = new Set<string>();
     allUnitsState.forEach(u => {
       const c = unitChildrenMapState.get(u.id) || [];
@@ -543,6 +558,7 @@ export function InteractiveTreeScreen() {
 
   // Thu gọn về mặc định: chỉ mở đến đời Tôi
   const handleCollapseToUserGen = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const defaultExpanded = new Set<string>();
     allUnitsState.forEach(u => {
       const c = unitChildrenMapState.get(u.id) || [];

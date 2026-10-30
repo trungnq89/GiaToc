@@ -229,10 +229,40 @@ export async function inspectBackupZip(zipPathOrUri: string): Promise<{
   }
 
   const manifestJsonStr = await manifestFile.async('text');
-  const manifest = JSON.parse(manifestJsonStr) as BackupManifest;
+  let manifest: BackupManifest;
+  try {
+    manifest = JSON.parse(manifestJsonStr) as BackupManifest;
+  } catch {
+    throw new Error('Tệp manifest.json bị lỗi cấu trúc dữ liệu JSON.');
+  }
 
   if (manifest.appName !== 'giatoc') {
     throw new Error('Tệp ZIP này không phải là bản sao lưu của ứng dụng Gia Tộc.');
+  }
+
+  if (!manifest.backupVersion || manifest.backupVersion > 1) {
+    throw new Error(
+      `Phiên bản dữ liệu (backupVersion ${manifest.backupVersion || 'không xác định'}) không tương thích với ứng dụng hiện tại.`,
+    );
+  }
+
+  // Kiểm tra tính toàn vẹn các bảng dữ liệu chính trong ZIP
+  const personsFile = zip.file('data/persons.json');
+  const relationshipsFile = zip.file('data/relationships.json');
+  const memorialEventsFile = zip.file('data/memorial_events.json');
+
+  if (!personsFile || !relationshipsFile || !memorialEventsFile) {
+    throw new Error('Tệp ZIP bị hỏng hoặc thiếu các thư mục dữ liệu cốt lõi (persons, relationships, memorial_events).');
+  }
+
+  // Kiểm tra đọc thử tính toàn vẹn cú pháp JSON
+  try {
+    const rawPersons = JSON.parse(await personsFile.async('text'));
+    if (!Array.isArray(rawPersons)) {
+      throw new Error('Dữ liệu danh sách người thân trong file ZIP không đúng định dạng mảng.');
+    }
+  } catch (err: any) {
+    throw new Error(`Dữ liệu bảng persons bị hỏng: ${err?.message || 'Không thể đọc JSON'}`);
   }
 
   let size: number | undefined;

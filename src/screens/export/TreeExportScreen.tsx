@@ -528,23 +528,45 @@ export function TreeExportScreen() {
   const captureCanvasImage = async (): Promise<string | null> => {
     if (!canvasRef.current) return null;
     const previousZoom = zoomLevel;
-    // Always export at 100% full crisp resolution
-    if (previousZoom !== 1.0) {
-      setZoomLevel(1.0);
-      await new Promise(resolve => setTimeout(() => resolve(undefined), 80));
+
+    // Tính toán tỷ lệ xuất an toàn để tránh tràn bộ nhớ GPU/OpenGL texture (thường giới hạn ở 4096px trên nhiều thiết bị)
+    const MAX_SAFE_TEXTURE_SIZE = 4096;
+    const maxDim = Math.max(canvasWidth, canvasHeight);
+    let targetScale = 1.0;
+    if (maxDim > MAX_SAFE_TEXTURE_SIZE) {
+      targetScale = Number((MAX_SAFE_TEXTURE_SIZE / maxDim).toFixed(2));
     }
+
+    if (previousZoom !== targetScale) {
+      setZoomLevel(targetScale);
+      await new Promise(resolve => setTimeout(() => resolve(undefined), 100));
+    }
+
     try {
       const uri = await captureRef(canvasRef.current, {
         format: 'png',
-        quality: 1.0,
+        quality: 0.95,
         result: 'tmpfile',
       });
       return uri;
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Capture tree error:', e);
-      return null;
+      // Fallback chụp với tỷ lệ 0.75 nếu vẫn bị lỗi bộ nhớ
+      try {
+        setZoomLevel(0.75);
+        await new Promise(resolve => setTimeout(() => resolve(undefined), 100));
+        const fallbackUri = await captureRef(canvasRef.current, {
+          format: 'png',
+          quality: 0.9,
+          result: 'tmpfile',
+        });
+        return fallbackUri;
+      } catch (fallbackErr) {
+        console.warn('Fallback capture tree error:', fallbackErr);
+        return null;
+      }
     } finally {
-      if (previousZoom !== 1.0) {
+      if (previousZoom !== targetScale) {
         setZoomLevel(previousZoom);
       }
     }
